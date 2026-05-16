@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// 玩家控制器脚本 - 负责处理玩家的移动和旋转
@@ -7,6 +8,7 @@ using UnityEngine;
 /// 2. 指数曲线加速（输入时快速加速）
 /// 3. 对数曲线减速（停止输入时平滑减速）
 /// 4. 角色朝向跟随移动方向平滑旋转
+/// 5. 与Enemy碰撞时扣血
 /// </summary>
 public class PlayerController : MonoBehaviour
 {
@@ -16,6 +18,29 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     [Tooltip("最大移动速度")]
     public float moveSpeed = 9f;
+
+    /// <summary>
+    /// 碰撞伤害 - 碰到Enemy时受到的伤害值
+    /// </summary>
+    [Tooltip("碰到Enemy时受到的伤害")]
+    public float damageOnHit = 10f;
+
+    /// <summary>
+    /// 受伤冷却时间 - 两次受伤之间的间隔（秒）
+    /// 防止连续碰撞造成多次伤害
+    /// </summary>
+    [Tooltip("受伤冷却时间（秒）")]
+    public float damageCooldown = 1f;
+
+    /// <summary>
+    /// 玩家血量组件引用
+    /// </summary>
+    private Health health;
+
+    /// <summary>
+    /// 是否处于受伤冷却中
+    /// </summary>
+    private bool isInvincible = false;
 
     /// <summary>
     /// 加速因子 - 控制加速曲线的陡峭程度
@@ -48,7 +73,7 @@ public class PlayerController : MonoBehaviour
 
     /// <summary>
     /// 初始化方法 - 游戏开始时调用一次
-    /// 职责：获取刚体组件，自动查找主摄像机
+    /// 职责：获取刚体组件，自动查找主摄像机，获取血量组件
     /// </summary>
     void Start()
     {
@@ -66,6 +91,13 @@ public class PlayerController : MonoBehaviour
                 // 获取主摄像机的Transform组件用于方向计算
                 cameraTransform = Camera.main.transform;
             }
+        }
+
+        // 获取玩家的血量组件
+        health = GetComponent<Health>();
+        if (health == null)
+        {
+            Debug.LogWarning("PlayerController: 未找到 Health 组件，请确保玩家对象上挂载了 Health.cs");
         }
     }
 
@@ -307,5 +339,68 @@ public class PlayerController : MonoBehaviour
                 15f * Time.deltaTime // 旋转速度系数
             );
         }
+    }
+
+    /// <summary>
+    /// 碰撞检测 - 当玩家碰撞到其他对象时调用
+    /// 职责：检测是否碰到Enemy，如果是则扣血
+    /// </summary>
+    /// <param name="other">碰撞到的对象</param>
+    void OnCollisionEnter(Collision other)
+    {
+        // 检查是否碰到Enemy
+        if (other.gameObject.CompareTag("Enemy"))
+        {
+            TakeDamageFromEnemy();
+        }
+    }
+
+    /// <summary>
+    /// 触发检测 - 当玩家进入触发器时调用（使用Trigger时）
+    /// 职责：检测是否进入Enemy区域，如果是则扣血
+    /// </summary>
+    /// <param name="other">触发区域的Collider</param>
+    void OnTriggerEnter(Collider other)
+    {
+        // 检查是否进入Enemy触发区域
+        if (other.gameObject.CompareTag("Enemy"))
+        {
+            TakeDamageFromEnemy();
+        }
+    }
+
+    /// <summary>
+    /// 受到Enemy伤害
+    /// 职责：处理扣血逻辑，包括冷却机制
+    /// </summary>
+    void TakeDamageFromEnemy()
+    {
+        // 如果处于冷却中，不处理伤害
+        if (isInvincible) return;
+
+        // 如果没有血量组件，不处理伤害
+        if (health == null) return;
+
+        // 受到伤害
+        health.TakeDamage(damageOnHit);
+
+        // 开始受伤冷却
+        StartCoroutine(DamageCooldownCoroutine());
+    }
+
+    /// <summary>
+    /// 受伤冷却协程 - 控制受伤后的无敌时间
+    /// </summary>
+    /// <returns>协程迭代器</returns>
+    IEnumerator DamageCooldownCoroutine()
+    {
+        // 设置为无敌状态
+        isInvincible = true;
+
+        // 等待冷却时间
+        yield return new WaitForSeconds(damageCooldown);
+
+        // 恢复可受伤状态
+        isInvincible = false;
     }
 }
