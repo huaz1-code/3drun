@@ -3,8 +3,8 @@ using UnityEngine;
 /// <summary>
 /// 平台脚本 - 负责管理单个平台的状态
 /// 功能说明：
-/// 1. 记录当前平台上的金币和NPC引用
-/// 2. 提供金币/NPC的设置和回收接口
+/// 1. 记录当前平台上的金币和Enemy引用
+/// 2. 提供金币/Enemy的设置和回收接口
 /// 3. 随机切换平台材质（视觉效果）
 /// 4. 对象回收时自动清理子对象
 /// </summary>
@@ -20,7 +20,7 @@ public class Platform : MonoBehaviour
 
     /// <summary>
     /// 调试模式 - 是否输出调试日志
-    /// 开启后会在金币/NPC设置和回收时打印信息
+    /// 开启后会在金币/Enemy设置和回收时打印信息
     /// </summary>
     [Tooltip("调试模式")]
     public bool debugMode = false;
@@ -37,16 +37,16 @@ public class Platform : MonoBehaviour
     private GameObject currentCoin;
 
     /// <summary>
-    /// 当前NPC引用 - 记录此平台上生成的NPC
-    /// null表示没有NPC
+    /// 当前Enemy引用 - 记录此平台上生成的Enemy
+    /// null表示没有Enemy
     /// </summary>
-    private GameObject currentNPC;
+    private GameObject currentEnemy;
 
     /// <summary>
-    /// NPC存在标记 - 表示平台上是否有NPC
-    /// 用于避免在有NPC的平台上生成金币
+    /// Enemy存在标记 - 表示平台上是否有Enemy
+    /// 用于避免在有Enemy的平台上生成金币
     /// </summary>
-    public bool HasNPC { get; set; }
+    public bool HasEnemy { get; set; }
 
     /// <summary>
     /// 唤醒方法 - 对象创建时调用（在Start之前）
@@ -60,23 +60,23 @@ public class Platform : MonoBehaviour
     }
 
     /// <summary>
-    /// 重置平台 - 回收金币/NPC并随机切换材质
+    /// 重置平台 - 回收金币/Enemy并随机切换材质
     /// 在对象从池中取出重用时调用
     /// 确保平台每次使用都是干净的状态
     /// </summary>
     public void ResetPlatform()
     {
         // 调试日志
-        if (debugMode) Debug.Log($"Platform.ResetPlatform: {name}, 金币: {currentCoin}, NPC: {currentNPC}");
+        if (debugMode) Debug.Log($"Platform.ResetPlatform: {name}, 金币: {currentCoin}, Enemy: {currentEnemy}");
 
         // 回收当前金币（如果有）
         RecycleCoin();
 
-        // 回收当前NPC（如果有）
-        RecycleNPC();
+        // 回收当前Enemy（如果有）
+        RecycleEnemy();
 
-        // 重置NPC标记
-        HasNPC = false;
+        // 重置Enemy标记
+        HasEnemy = false;
 
         // 随机切换材质
         RandomizeMaterial();
@@ -126,17 +126,17 @@ public class Platform : MonoBehaviour
     }
 
     /// <summary>
-    /// 设置NPC - 在平台上放置NPC
+    /// 设置Enemy - 在平台上放置Enemy
     /// </summary>
-    /// <param name="npc">要设置的NPC GameObject</param>
-    public void SetNPC(GameObject npc)
+    /// <param name="enemy">要设置的Enemy GameObject</param>
+    public void SetEnemy(GameObject enemy)
     {
         // 调试日志
-        if (debugMode && npc != null)
-            Debug.Log($"Platform.SetNPC: {name} 设置NPC {npc.name}");
+        if (debugMode && enemy != null)
+            Debug.Log($"Platform.SetEnemy: {name} 设置Enemy {enemy.name}");
 
-        // 记录NPC引用
-        currentNPC = npc;
+        // 记录Enemy引用
+        currentEnemy = enemy;
     }
 
     /// <summary>
@@ -171,43 +171,43 @@ public class Platform : MonoBehaviour
     }
 
     /// <summary>
-    /// 回收NPC - 将NPC归还到对象池
-    /// 如果没有NPC则跳过
+    /// 回收Enemy - 将Enemy归还到对象池
+    /// 如果没有Enemy则跳过
     /// </summary>
-    public void RecycleNPC()
+    public void RecycleEnemy()
     {
-        // 检查是否有NPC需要回收
-        if (currentNPC != null)
+        // 检查是否有Enemy需要回收
+        if (currentEnemy != null)
         {
             // 调试日志
             if (debugMode)
-                Debug.Log($"Platform.RecycleNPC: {name} 回收NPC {currentNPC.name}");
+                Debug.Log($"Platform.RecycleEnemy: {name} 回收Enemy {currentEnemy.name}");
 
-            // 检查NPC池是否存在
-            if (NPCPool.Instance != null)
+            // 检查Enemy池是否存在
+            if (EnemyPool.Instance != null)
             {
-                // 调用NPC池的回收方法
-                // NPC池负责将NPC设为非激活状态并放回队列
-                NPCPool.Instance.ReturnNPC(currentNPC);
+                // 调用Enemy池的回收方法
+                // Enemy池负责将Enemy设为非激活状态并放回队列
+                EnemyPool.Instance.ReturnEnemy(currentEnemy);
             }
 
             // 清空引用
-            currentNPC = null;
+            currentEnemy = null;
         }
 
-        // 重置NPC标记
-        HasNPC = false;
+        // 重置Enemy标记
+        HasEnemy = false;
     }
 
     /// <summary>
     /// 销毁回调 - 当平台被销毁时调用
-    /// 确保平台销毁时金币和NPC也被正确回收
+    /// 确保平台销毁时金币和Enemy也被正确回收
     /// 防止内存泄漏
     /// </summary>
     void OnDestroy()
     {
         // 调用回收方法，确保子对象被正确清理
         RecycleCoin();
-        RecycleNPC();
+        RecycleEnemy();
     }
 }

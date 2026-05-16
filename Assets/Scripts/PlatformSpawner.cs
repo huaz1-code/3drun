@@ -5,7 +5,7 @@ using UnityEngine;
 /// 功能说明：
 /// 1. 根据玩家位置动态生成新平台
 /// 2. 回收玩家身后的旧平台
-/// 3. 在新平台上生成NPC和金币
+/// 3. 在新平台上生成Enemy和金币
 /// 4. 实现无限跑酷地图的错觉
 /// </summary>
 public class PlatformSpawner : MonoBehaviour
@@ -120,7 +120,7 @@ public class PlatformSpawner : MonoBehaviour
 
     /// <summary>
     /// 平台计数器 - 记录已生成的平台总数
-    /// 用于NPC生成的间隔判断
+    /// 用于Enemy生成的间隔判断
     /// </summary>
     private int platformIndex = 0;
 
@@ -214,7 +214,7 @@ public class PlatformSpawner : MonoBehaviour
 
     /// <summary>
     /// 生成平台 - 创建单个新平台
-    /// 从对象池获取平台，设置位置和大小，然后生成金币和NPC
+    /// 从对象池获取平台，设置位置和大小，然后生成Enemy和金币
     /// </summary>
     void SpawnPlatform()
     {
@@ -241,12 +241,12 @@ public class PlatformSpawner : MonoBehaviour
             if (debugMode)
                 Debug.Log($"SpawnPlatform: 生成平台 #{platformIndex} at Z={nextSpawnZ}");
 
-            // 查找NPC生成器，在新平台上生成NPC
-            NPCSpawner npcSpawner = FindObjectOfType<NPCSpawner>();
-            if (npcSpawner != null)
+            // 查找Enemy生成器，在新平台上生成Enemy
+            EnemySpawner enemySpawner = FindObjectOfType<EnemySpawner>();
+            if (enemySpawner != null)
             {
-                // 传入平台和索引，生成器会决定是否生成NPC
-                npcSpawner.SpawnNPCOnPlatform(platform, platformIndex);
+                // 传入平台和索引，生成器会决定是否生成Enemy
+                enemySpawner.SpawnEnemyOnPlatform(platform, platformIndex);
             }
 
             // 查找金币生成器，在新平台上生成金币

@@ -1,30 +1,30 @@
 using UnityEngine;
 
 /// <summary>
-/// NPC脚本 - 控制单个NPC的行为
+/// Enemy脚本 - 控制单个Enemy的行为
 /// 功能说明：
-/// 1. NPC左右巡逻移动
+/// 1. Enemy左右巡逻移动
 /// 2. 在设定的范围内来回移动
 /// 3. 碰到边界后反向移动
 /// </summary>
-public class NPC : MonoBehaviour
+public class Enemy : MonoBehaviour
 {
     /// <summary>
-    /// 移动速度 - NPC每秒移动的距离（单位/秒）
+    /// 移动速度 - Enemy每秒移动的距离（单位/秒）
     /// 值越大，移动越快
     /// </summary>
     [Tooltip("移动速度")]
     public float moveSpeed = 2f;
 
     /// <summary>
-    /// 移动范围 - NPC左右移动的边界距离
-    /// NPC会在起始点左右各移动这个距离的范围
+    /// 移动范围 - Enemy左右移动的边界距离
+    /// Enemy会在起始点左右各移动这个距离的范围
     /// </summary>
     [Tooltip("移动范围（左右）")]
     public float moveRange = 3f;
 
     /// <summary>
-    /// 起始位置 - NPC生成时的位置
+    /// 起始位置 - Enemy生成时的位置
     /// 作为移动范围的中心点
     /// </summary>
     private Vector3 startPosition;
@@ -47,7 +47,7 @@ public class NPC : MonoBehaviour
 
     /// <summary>
     /// 更新方法 - 每帧调用
-    /// 职责：处理NPC的巡逻移动
+    /// 职责：处理Enemy的巡逻移动
     /// </summary>
     void Update()
     {
@@ -69,7 +69,7 @@ public class NPC : MonoBehaviour
 
         // ========== 更新位置 ==========
         // 使用Clamp限制位置在范围内
-        // 确保NPC不会超出设定的移动边界
+        // 确保Enemy不会超出设定的移动边界
         transform.position = new Vector3(
             Mathf.Clamp(newX, startPosition.x - moveRange, startPosition.x + moveRange),
             transform.position.y,  // 保持Y和Z坐标不变
@@ -78,10 +78,10 @@ public class NPC : MonoBehaviour
     }
 
     /// <summary>
-    /// 重置NPC - 重用时调用的初始化方法
-    /// 在对象池获取NPC时调用
+    /// 重置Enemy - 重用时调用的初始化方法
+    /// 在对象池获取Enemy时调用
     /// </summary>
-    public void ResetNPC()
+    public void ResetEnemy()
     {
         // 记录新的起始位置为当前位置
         startPosition = transform.position;
