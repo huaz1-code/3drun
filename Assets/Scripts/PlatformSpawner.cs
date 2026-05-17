@@ -241,19 +241,35 @@ public class PlatformSpawner : MonoBehaviour
             if (debugMode)
                 Debug.Log($"SpawnPlatform: 生成平台 #{platformIndex} at Z={nextSpawnZ}");
 
-            // 查找Enemy生成器，在新平台上生成Enemy
-            EnemySpawner enemySpawner = FindObjectOfType<EnemySpawner>();
-            if (enemySpawner != null)
+            // 查找NPC生成器，在新平台上生成NPC（只在第二个平台生成）
+            SimpleNPCSpawner npcSpawner = FindObjectOfType<SimpleNPCSpawner>();
+            if (npcSpawner != null)
             {
-                // 传入平台和索引，生成器会决定是否生成Enemy
-                enemySpawner.SpawnEnemyOnPlatform(platform, platformIndex);
+                npcSpawner.SpawnNPCOnPlatform(platform, platformIndex);
             }
 
-            // 查找金币生成器，在新平台上生成金币
-            CoinSpawner coinSpawner = FindObjectOfType<CoinSpawner>();
-            if (coinSpawner != null)
+            // 获取平台组件，检查是否有NPC
+            Platform platformComp = platform.GetComponent<Platform>();
+            bool hasNPC = platformComp != null && platformComp.HasNPC;
+
+            // 如果平台没有NPC，才生成Enemy
+            if (!hasNPC)
             {
-                coinSpawner.SpawnCoinsOnNewPlatform(platform);
+                EnemySpawner enemySpawner = FindObjectOfType<EnemySpawner>();
+                if (enemySpawner != null)
+                {
+                    enemySpawner.SpawnEnemyOnPlatform(platform, platformIndex);
+                }
+            }
+
+            // 如果平台没有NPC，才生成金币
+            if (!hasNPC)
+            {
+                CoinSpawner coinSpawner = FindObjectOfType<CoinSpawner>();
+                if (coinSpawner != null)
+                {
+                    coinSpawner.SpawnCoinsOnNewPlatform(platform);
+                }
             }
 
             // 平台计数器递增

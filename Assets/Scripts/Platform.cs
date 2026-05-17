@@ -49,6 +49,12 @@ public class Platform : MonoBehaviour
     public bool HasEnemy { get; set; }
 
     /// <summary>
+    /// NPC存在标记 - 表示平台上是否有NPC
+    /// 用于避免在有NPC的平台上生成金币和Enemy
+    /// </summary>
+    public bool HasNPC { get; set; }
+
+    /// <summary>
     /// 唤醒方法 - 对象创建时调用（在Start之前）
     /// 职责：获取渲染器组件引用
     /// </summary>
@@ -75,8 +81,9 @@ public class Platform : MonoBehaviour
         // 回收当前Enemy（如果有）
         RecycleEnemy();
 
-        // 重置Enemy标记
+        // 重置Enemy和NPC标记
         HasEnemy = false;
+        HasNPC = false;
 
         // 随机切换材质
         RandomizeMaterial();

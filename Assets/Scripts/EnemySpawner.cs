@@ -44,6 +44,11 @@ public class EnemySpawner : MonoBehaviour
         if (platformIndex < startSpawnIndex || platformIndex % spawnInterval != 0)
             return;
 
+        // 检查平台是否有NPC，有NPC则不生成Enemy
+        Platform platformComp = platform.GetComponent<Platform>();
+        if (platformComp != null && platformComp.HasNPC)
+            return;
+
         // 检查Enemy池是否可用
         if (EnemyPool.Instance == null) return;
 
@@ -71,8 +76,7 @@ public class EnemySpawner : MonoBehaviour
 
         if (enemy != null)
         {
-            // 获取平台的Platform组件
-            Platform platformComp = platform.GetComponent<Platform>();
+            // 使用之前获取的Platform组件
             if (platformComp != null)
             {
                 // 标记平台有Enemy
