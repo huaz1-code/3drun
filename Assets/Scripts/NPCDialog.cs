@@ -5,7 +5,7 @@ using TMPro;
 /// NPC对话脚本 - 处理玩家与NPC的对话交互
 /// 功能说明：
 /// 1. 检测玩家进入交互范围
-/// 2. 显示/隐藏对话提示
+/// 2. 在NPC头上显示按E对话提示
 /// 3. 按E键触发对话
 /// 4. 显示对话内容
 /// </summary>
@@ -30,10 +30,16 @@ public class NPCDialog : MonoBehaviour
     public TextMeshProUGUI dialogText;
 
     /// <summary>
-    /// 按E提示文本 - 显示"按E对话"提示
+    /// 头上提示文本 - 在NPC头上显示"按E对话"提示
     /// </summary>
-    [Tooltip("按E提示文本")]
-    public TextMeshProUGUI pressEText;
+    [Tooltip("头上提示文本")]
+    public TextMeshProUGUI overheadText;
+
+    /// <summary>
+    /// 提示高度偏移 - 提示相对于NPC头顶的高度
+    /// </summary>
+    [Tooltip("提示高度偏移")]
+    public float textHeightOffset = 2f;
 
     /// <summary>
     /// NPC名字 - 在对话中显示的名字
@@ -63,16 +69,25 @@ public class NPCDialog : MonoBehaviour
     private PlayerController playerController;
 
     /// <summary>
+    /// 提示文本的RectTransform - 用于设置位置
+    /// </summary>
+    private RectTransform overheadRectTransform;
+
+    /// <summary>
     /// 初始化方法
     /// </summary>
     void Start()
     {
-        // 隐藏对话面板和提示
+        // 隐藏对话面板
         if (dialogPanel != null)
             dialogPanel.SetActive(false);
-        
-        if (pressEText != null)
-            pressEText.gameObject.SetActive(false);
+
+        // 隐藏头上提示
+        if (overheadText != null)
+        {
+            overheadText.gameObject.SetActive(false);
+            overheadRectTransform = overheadText.GetComponent<RectTransform>();
+        }
 
         // 设置NPC名字
         if (speakerNameText != null)
@@ -80,10 +95,13 @@ public class NPCDialog : MonoBehaviour
     }
 
     /// <summary>
-    /// 更新方法 - 检测E键输入
+    /// 更新方法 - 检测E键输入和更新提示位置
     /// </summary>
     void Update()
     {
+        // 更新头上提示的位置
+        UpdateOverheadTextPosition();
+
         // 如果玩家在范围内且按E键
         if (playerInRange && Input.GetKeyDown(KeyCode.E))
         {
@@ -107,6 +125,32 @@ public class NPCDialog : MonoBehaviour
     }
 
     /// <summary>
+    /// 更新头上提示的位置 - 让提示始终跟随NPC并面向摄像机
+    /// </summary>
+    void UpdateOverheadTextPosition()
+    {
+        if (overheadText == null || overheadRectTransform == null || Camera.main == null)
+            return;
+
+        // 计算NPC头顶位置（世界坐标）
+        Vector3 worldPosition = transform.position + Vector3.up * textHeightOffset;
+
+        // 转换为屏幕坐标
+        Vector2 screenPosition = Camera.main.WorldToScreenPoint(worldPosition);
+
+        // 设置UI位置
+        overheadRectTransform.position = screenPosition;
+
+        // 确保提示始终在屏幕内
+        Vector2 minPosition = new Vector2(overheadRectTransform.rect.width / 2, overheadRectTransform.rect.height / 2);
+        Vector2 maxPosition = new Vector2(Screen.width - overheadRectTransform.rect.width / 2, Screen.height - overheadRectTransform.rect.height / 2);
+        overheadRectTransform.position = new Vector2(
+            Mathf.Clamp(screenPosition.x, minPosition.x, maxPosition.x),
+            Mathf.Clamp(screenPosition.y, minPosition.y, maxPosition.y)
+        );
+    }
+
+    /// <summary>
     /// 玩家进入触发区域
     /// </summary>
     void OnTriggerEnter(Collider other)
@@ -119,9 +163,9 @@ public class NPCDialog : MonoBehaviour
             // 获取玩家控制器引用
             playerController = other.GetComponent<PlayerController>();
 
-            // 显示按E提示
-            if (pressEText != null)
-                pressEText.gameObject.SetActive(true);
+            // 显示头上提示
+            if (overheadText != null)
+                overheadText.gameObject.SetActive(true);
         }
     }
 
@@ -135,9 +179,9 @@ public class NPCDialog : MonoBehaviour
         {
             playerInRange = false;
             
-            // 隐藏按E提示
-            if (pressEText != null)
-                pressEText.gameObject.SetActive(false);
+            // 隐藏头上提示
+            if (overheadText != null)
+                overheadText.gameObject.SetActive(false);
         }
     }
 
@@ -148,9 +192,9 @@ public class NPCDialog : MonoBehaviour
     {
         isTalking = true;
 
-        // 隐藏按E提示
-        if (pressEText != null)
-            pressEText.gameObject.SetActive(false);
+        // 隐藏头上提示
+        if (overheadText != null)
+            overheadText.gameObject.SetActive(false);
 
         // 显示对话面板
         if (dialogPanel != null)
@@ -176,9 +220,9 @@ public class NPCDialog : MonoBehaviour
         if (dialogPanel != null)
             dialogPanel.SetActive(false);
 
-        // 如果玩家还在范围内，显示按E提示
-        if (playerInRange && pressEText != null)
-            pressEText.gameObject.SetActive(true);
+        // 如果玩家还在范围内，显示头上提示
+        if (playerInRange && overheadText != null)
+            overheadText.gameObject.SetActive(true);
 
         // 恢复玩家移动
         if (playerController != null)
