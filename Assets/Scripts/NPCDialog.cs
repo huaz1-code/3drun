@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
 
 /// <summary>
 /// NPC对话脚本 - 处理玩家与NPC的对话交互
@@ -7,7 +8,7 @@ using TMPro;
 /// 1. 检测玩家进入交互范围
 /// 2. 在NPC头上显示按E对话提示
 /// 3. 按E键触发对话
-/// 4. 显示对话内容
+/// 4. 显示对话内容，包含商店按钮
 /// </summary>
 public class NPCDialog : MonoBehaviour
 {
@@ -40,6 +41,18 @@ public class NPCDialog : MonoBehaviour
     /// </summary>
     [Tooltip("提示高度偏移")]
     public float textHeightOffset = 2f;
+
+    /// <summary>
+    /// 商店按钮 - 点击进入商店
+    /// </summary>
+    [Tooltip("商店按钮")]
+    public Button shopButton;
+
+    /// <summary>
+    /// 商店面板 - 商店UI面板
+    /// </summary>
+    [Tooltip("商店面板")]
+    public GameObject shopPanel;
 
     /// <summary>
     /// NPC名字 - 在对话中显示的名字
@@ -82,11 +95,21 @@ public class NPCDialog : MonoBehaviour
         if (dialogPanel != null)
             dialogPanel.SetActive(false);
 
+        // 隐藏商店面板
+        if (shopPanel != null)
+            shopPanel.SetActive(false);
+
         // 隐藏头上提示
         if (overheadText != null)
         {
             overheadText.gameObject.SetActive(false);
             overheadRectTransform = overheadText.GetComponent<RectTransform>();
+        }
+
+        // 设置商店按钮点击事件
+        if (shopButton != null)
+        {
+            shopButton.onClick.AddListener(OpenShop);
         }
 
         // 设置NPC名字
@@ -112,8 +135,15 @@ public class NPCDialog : MonoBehaviour
             }
             else
             {
-                // 结束对话
-                EndDialog();
+                // 检查是否在商店界面，如果是则关闭商店，否则关闭对话
+                if (shopPanel != null && shopPanel.activeSelf)
+                {
+                    CloseShop();
+                }
+                else
+                {
+                    EndDialog();
+                }
             }
         }
 
@@ -207,6 +237,18 @@ public class NPCDialog : MonoBehaviour
         // 暂停玩家移动
         if (playerController != null)
             playerController.enabled = false;
+
+        // 立即停止玩家的物理速度，防止继续移动
+        Rigidbody playerRb = playerController != null ? playerController.GetComponent<Rigidbody>() : null;
+        if (playerRb != null)
+        {
+            playerRb.velocity = Vector3.zero;
+            playerRb.angularVelocity = Vector3.zero;
+        }
+
+        // 显示鼠标并解锁，以便点击UI按钮
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
     }
 
     /// <summary>
@@ -227,5 +269,41 @@ public class NPCDialog : MonoBehaviour
         // 恢复玩家移动
         if (playerController != null)
             playerController.enabled = true;
+
+        // 隐藏鼠标并锁定，恢复游戏状态
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    /// <summary>
+    /// 打开商店
+    /// </summary>
+    public void OpenShop()
+    {
+        // 隐藏对话面板
+        if (dialogPanel != null)
+            dialogPanel.SetActive(false);
+
+        // 显示商店面板
+        if (shopPanel != null)
+            shopPanel.SetActive(true);
+
+        Debug.Log("打开商店");
+    }
+
+    /// <summary>
+    /// 关闭商店
+    /// </summary>
+    public void CloseShop()
+    {
+        // 隐藏商店面板
+        if (shopPanel != null)
+            shopPanel.SetActive(false);
+
+        // 显示对话面板
+        if (dialogPanel != null)
+            dialogPanel.SetActive(true);
+
+        Debug.Log("关闭商店");
     }
 }
