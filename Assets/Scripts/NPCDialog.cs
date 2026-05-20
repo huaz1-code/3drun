@@ -82,6 +82,11 @@ public class NPCDialog : MonoBehaviour
     private PlayerController playerController;
 
     /// <summary>
+    /// 摄像机控制器引用 - 用于暂停/恢复摄像机旋转
+    /// </summary>
+    private CameraController cameraController;
+
+    /// <summary>
     /// 提示文本的RectTransform - 用于设置位置
     /// </summary>
     private RectTransform overheadRectTransform;
@@ -193,6 +198,12 @@ public class NPCDialog : MonoBehaviour
             // 获取玩家控制器引用
             playerController = other.GetComponent<PlayerController>();
 
+            // 获取摄像机控制器引用
+            if (cameraController == null)
+            {
+                cameraController = Camera.main?.GetComponent<CameraController>();
+            }
+
             // 显示头上提示
             if (overheadText != null)
                 overheadText.gameObject.SetActive(true);
@@ -246,6 +257,16 @@ public class NPCDialog : MonoBehaviour
             playerRb.angularVelocity = Vector3.zero;
         }
 
+        // 禁用摄像机控制器，防止对话时视角跟着鼠标转动
+        if (cameraController == null && playerController != null)
+        {
+            cameraController = Camera.main?.GetComponent<CameraController>();
+        }
+        if (cameraController != null)
+        {
+            cameraController.enabled = false;
+        }
+
         // 显示鼠标并解锁，以便点击UI按钮
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -269,6 +290,12 @@ public class NPCDialog : MonoBehaviour
         // 恢复玩家移动
         if (playerController != null)
             playerController.enabled = true;
+
+        // 重新启用摄像机控制器，恢复游戏状态
+        if (cameraController != null)
+        {
+            cameraController.enabled = true;
+        }
 
         // 隐藏鼠标并锁定，恢复游戏状态
         Cursor.lockState = CursorLockMode.Locked;
