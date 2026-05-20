@@ -1,257 +1,179 @@
 using UnityEngine;
 
 /// <summary>
-/// 最终平台管理器脚本 - 控制平台生成的终止和最终平台的生成
+/// FinalPlatformManager脚本 - 控制平台生成的终点逻辑
 /// 功能说明：
-/// 1. 监听平台生成事件
-/// 2. 当生成到第20个平台时停止生成普通平台
-/// 3. 在第20个平台位置显示大圆柱平台（场景中已有的对象）
+/// 1. 监听平台生成数量
+/// 2. 当生成到第20个平台时停止平台生成
+/// 3. 在第20个平台位置生成cube（终点标记）
+/// 4. 支持两种方式：使用预制体Instantiate创建，或使用场景中的对象（初始隐藏，到达时显示）
 /// </summary>
-public class FinalPlatformManager : MonoBehaviour
+public class finalplatformManager : MonoBehaviour
 {
     /// <summary>
-    /// 目标平台数量 - 到达此数量后停止生成普通平台并显示圆柱
+    /// 目标平台数量 - 到达此数量时停止生成
+    /// 当平台生成到这个数量时触发终点逻辑
     /// </summary>
-    [Tooltip("目标平台数量（到达后停止生成并显示圆柱）")]
+    [Tooltip("目标平台数量")]
     public int targetPlatformCount = 20;
 
     /// <summary>
-    /// 场景中已有的圆柱平台对象 - 开局隐藏，到达目标平台时显示
+    /// Cube对象 - 可以是场景中的对象或预制体
+    /// 如果是场景中的对象：开局自动隐藏，到达时显示并移动到平台位置
+    /// 如果是预制体：到达时Instantiate创建
     /// </summary>
-    [Tooltip("场景中已有的圆柱平台对象（开局隐藏，到达目标平台时显示）")]
-    public GameObject cylinderPlatform;
+    [Tooltip("Cube对象（可以是场景中的对象或预制体）")]
+    public GameObject cubeObject;
 
     /// <summary>
-    /// 平台宽度 - 用于计算圆柱与平台之间的距离
+    /// 位置偏移 - cube相对于第20个平台中心的偏移量
+    /// x：左右偏移（正值向右，负值向左）
+    /// y：上下偏移（正值向上，负值向下）
+    /// z：前后偏移（正向前方，负值向后方）
     /// </summary>
-    [Tooltip("平台宽度（用于计算间距）")]
-    public float platformWidth = 2f;
+    [Tooltip("Cube相对于平台中心的位置偏移（x左右/y上下/z前后）")]
+    public Vector3 positionOffset = new Vector3(0f, 2f, 0f);
 
     /// <summary>
-    /// 额外间距 - 平台与圆柱之间的空隙
-    /// </summary>
-    [Tooltip("平台与圆柱之间的额外空隙")]
-    public float extraGap = 1f;
-
-    /// <summary>
-    /// 是否已经显示过最终平台
-    /// </summary>
-    private bool hasShownFinalPlatform = false;
-
-    /// <summary>
-    /// 平台生成器引用
+    /// 平台生成器引用 - 用于控制平台生成
+    /// 需要获取PlatformSpawner组件来停止生成
     /// </summary>
     private PlatformSpawner platformSpawner;
 
     /// <summary>
-    /// 初始化方法
+    /// 终点是否已生成标记
+    /// 防止重复生成cube
+    /// </summary>
+    private bool endPointGenerated = false;
+
+    /// <summary>
+    /// cube是否是场景中的对象（非预制体）
+    /// </summary>
+    private bool isSceneObject = false;
+
+    /// <summary>
+    /// 初始化方法 - 游戏开始时调用一次
+    /// 职责：查找PlatformSpawner组件，初始化状态，隐藏场景中的cube
     /// </summary>
     void Start()
     {
-        // 查找平台生成器
+        // 查找PlatformSpawner组件
         platformSpawner = FindObjectOfType<PlatformSpawner>();
-        
         if (platformSpawner == null)
         {
-            Debug.LogError("FinalPlatformManager: 未找到PlatformSpawner！");
+            Debug.LogError("finalplatformManager: 未找到PlatformSpawner组件！");
+            enabled = false;
+            return;
         }
 
-        // 开局隐藏圆柱平台（像NPCPrefab那样）
-        if (cylinderPlatform != null)
+        // 检查是否设置了cubeObject
+        if (cubeObject == null)
         {
-            cylinderPlatform.SetActive(false);
-            Debug.Log("FinalPlatformManager: 已隐藏圆柱平台");
-        }
-    }
-
-    /// <summary>
-    /// 更新方法 - 检查平台数量
-    /// </summary>
-    void Update()
-    {
-        // 如果已经显示过最终平台，不再处理
-        if (hasShownFinalPlatform) return;
-
-        // 检查平台生成器是否存在
-        if (platformSpawner == null)
-        {
-            platformSpawner = FindObjectOfType<PlatformSpawner>();
-            if (platformSpawner == null) return;
-        }
-
-        // 获取当前平台索引（即已生成的平台数量）
-        int platformIndex = GetPlatformIndex();
-
-        // 如果到达目标平台数量，显示最终平台
-        if (platformIndex >= targetPlatformCount)
-        {
-            ShowFinalPlatform();
-        }
-    }
-
-    /// <summary>
-    /// 获取当前平台索引
-    /// </summary>
-    int GetPlatformIndex()
-    {
-        // 通过反射获取平台生成器的私有字段platformIndex
-        System.Reflection.FieldInfo field = typeof(PlatformSpawner).GetField("platformIndex", 
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        
-        if (field != null && platformSpawner != null)
-        {
-            return (int)field.GetValue(platformSpawner);
-        }
-        
-        return 0;
-    }
-
-    /// <summary>
-    /// 显示最终平台（在第20个平台位置）
-    /// </summary>
-    void ShowFinalPlatform()
-    {
-        hasShownFinalPlatform = true;
-
-        // 禁用平台生成器，停止生成普通平台
-        if (platformSpawner != null)
-        {
-            platformSpawner.enabled = false;
-            Debug.Log("FinalPlatformManager: 已停止生成普通平台");
-        }
-
-        // 获取第20个平台的位置
-        Vector3 platformPosition = GetPlatformPosition(targetPlatformCount - 1);
-
-        // 如果设置了圆柱平台对象，显示它并移动到目标位置
-        if (cylinderPlatform != null)
-        {
-            // 计算圆柱平台位置：与第20个平台在同一高度，中心距离为圆柱半径+平台宽度
-            Vector3 cylinderPosition = CalculateCylinderPosition(platformPosition);
-            
-            // 设置圆柱平台位置（与平台同一高度，不向上偏移）
-            cylinderPlatform.transform.position = cylinderPosition;
-            
-            // 显示圆柱平台
-            cylinderPlatform.SetActive(true);
-            
-            Debug.Log($"FinalPlatformManager: 已在位置 {cylinderPosition} 显示圆柱平台");
+            Debug.LogError("finalplatformManager: 请在Inspector中设置cubeObject！");
         }
         else
         {
-            Debug.LogError("FinalPlatformManager: 未设置cylinderPlatform！");
+            // 判断cubeObject是场景中的对象还是预制体
+            // 如果对象的场景不为null且不是Prefab，则是场景中的对象
+            if (cubeObject.scene.name != null && !cubeObject.scene.name.Equals(""))
+            {
+                isSceneObject = true;
+                // 隐藏场景中的cube对象，到达时再显示
+                cubeObject.SetActive(false);
+                Debug.Log("finalplatformManager: 场景中的cube已隐藏，等待到达第20个平台");
+            }
+            else
+            {
+                isSceneObject = false;
+                Debug.Log("finalplatformManager: 使用预制体模式，将在到达时Instantiate");
+            }
+        }
+
+        endPointGenerated = false;
+    }
+
+    /// <summary>
+    /// 更新方法 - 每帧调用
+    /// 职责：检查平台数量，到达目标时执行终点逻辑
+    /// </summary>
+    void Update()
+    {
+        // 如果终点已生成，不再执行
+        if (endPointGenerated) return;
+
+        // 获取当前平台索引（PlatformSpawner中的platformIndex）
+        // 使用反射获取私有字段
+        System.Reflection.FieldInfo fieldInfo = typeof(PlatformSpawner).GetField("platformIndex", 
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        
+        if (fieldInfo != null)
+        {
+            int currentPlatformCount = (int)fieldInfo.GetValue(platformSpawner);
+            
+            // 检查是否到达目标平台数量
+            if (currentPlatformCount >= targetPlatformCount)
+            {
+                // 执行终点逻辑
+                GenerateEndPoint();
+            }
         }
     }
 
     /// <summary>
-    /// 获取指定索引平台的位置（螺旋生成位置）
+    /// 生成终点 - 在第20个平台位置生成cube并停止平台生成
     /// </summary>
-    Vector3 GetPlatformPosition(int platformIndex)
+    void GenerateEndPoint()
     {
-        // 通过反射获取平台生成器的字段
-        System.Reflection.FieldInfo centerField = typeof(PlatformSpawner).GetField("cylinderCenter", 
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        System.Reflection.FieldInfo radiusField = typeof(PlatformSpawner).GetField("spiralRadius", 
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        System.Reflection.FieldInfo heightField = typeof(PlatformSpawner).GetField("heightPerPlatform", 
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        System.Reflection.FieldInfo rotationField = typeof(PlatformSpawner).GetField("rotationPerPlatform", 
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        if (endPointGenerated) return;
 
-        // 获取圆柱体中心位置
-        Vector3 centerPos = Vector3.zero;
-        if (centerField != null && platformSpawner != null)
+        // 标记终点已生成，防止重复执行
+        endPointGenerated = true;
+
+        Debug.Log("finalplatformManager: 到达第20个平台，停止生成并显示终点cube");
+
+        // 停止平台生成器
+        if (platformSpawner != null)
         {
-            Transform center = (Transform)centerField.GetValue(platformSpawner);
-            if (center != null)
+            platformSpawner.enabled = false;
+            Debug.Log("finalplatformManager: 已停止PlatformSpawner");
+        }
+
+        // 如果设置了cubeObject，在第20个平台位置显示或生成cube
+        if (cubeObject != null)
+        {
+            // 获取圆柱体中心位置
+            Vector3 centerPos = platformSpawner.cylinderCenter != null 
+                ? platformSpawner.cylinderCenter.position 
+                : Vector3.zero;
+
+            // 计算第20个平台的位置（与PlatformSpawner相同的螺旋公式）
+            int targetIndex = targetPlatformCount - 1; // 因为索引从0开始
+            float angle = Mathf.Deg2Rad * targetIndex * platformSpawner.rotationPerPlatform;
+            float x = centerPos.x + platformSpawner.spiralRadius * Mathf.Cos(angle);
+            float z = centerPos.z + platformSpawner.spiralRadius * Mathf.Sin(angle);
+            float y = centerPos.y + platformSpawner.heightPerPlatform * targetIndex;
+
+            // 基础位置 + 手动偏移
+            Vector3 cubePosition = new Vector3(x + positionOffset.x, y + positionOffset.y, z + positionOffset.z);
+
+            if (isSceneObject)
             {
-                centerPos = center.position;
+                // 如果是场景中的对象：移动到目标位置并显示
+                cubeObject.transform.position = cubePosition;
+                cubeObject.SetActive(true);
+                Debug.Log($"finalplatformManager: 场景中的cube已移动到位置 ({x:F2}, {y:F2}, {z:F2}) 并显示");
+            }
+            else
+            {
+                // 如果是预制体：Instantiate创建
+                GameObject endCube = Instantiate(cubeObject, cubePosition, Quaternion.identity);
+                endCube.name = "EndCube";
+                Debug.Log($"finalplatformManager: 在位置 ({x:F2}, {y:F2}, {z:F2}) 生成终点cube");
             }
         }
-
-        // 获取螺旋半径
-        float spiralRadius = 6f;
-        if (radiusField != null && platformSpawner != null)
+        else
         {
-            spiralRadius = (float)radiusField.GetValue(platformSpawner);
+            Debug.LogWarning("finalplatformManager: cubeObject未设置，跳过cube生成");
         }
-
-        // 获取每平台上升高度
-        float heightPerPlatform = 1.5f;
-        if (heightField != null && platformSpawner != null)
-        {
-            heightPerPlatform = (float)heightField.GetValue(platformSpawner);
-        }
-
-        // 获取每平台旋转角度
-        float rotationPerPlatform = 45f;
-        if (rotationField != null && platformSpawner != null)
-        {
-            rotationPerPlatform = (float)rotationField.GetValue(platformSpawner);
-        }
-
-        // 计算平台位置（螺旋公式）
-        float angle = platformIndex * rotationPerPlatform * Mathf.Deg2Rad;
-        float x = centerPos.x + spiralRadius * Mathf.Cos(angle);
-        float z = centerPos.z + spiralRadius * Mathf.Sin(angle);
-        float y = centerPos.y + platformIndex * heightPerPlatform;
-
-        return new Vector3(x, y, z);
     }
-
-    /// <summary>
-    /// 计算圆柱平台位置：与平台同一高度，中心距离为圆柱半径+平台宽度+额外间距
-    /// </summary>
-    Vector3 CalculateCylinderPosition(Vector3 platformPosition)
-    {
-        // 通过反射获取平台生成器的字段
-        System.Reflection.FieldInfo centerField = typeof(PlatformSpawner).GetField("cylinderCenter", 
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-
-        // 获取圆柱体中心位置
-        Vector3 centerPos = Vector3.zero;
-        if (centerField != null && platformSpawner != null)
-        {
-            Transform center = (Transform)centerField.GetValue(platformSpawner);
-            if (center != null)
-            {
-                centerPos = center.position;
-            }
-        }
-
-        // 获取圆柱半径（从对象的缩放或碰撞体获取）
-        float cylinderRadius = 5f; // 默认值
-        if (cylinderPlatform != null)
-        {
-            // 尝试从碰撞体获取半径
-            Collider collider = cylinderPlatform.GetComponent<Collider>();
-            if (collider is SphereCollider sphereCollider)
-            {
-                cylinderRadius = sphereCollider.radius * cylinderPlatform.transform.localScale.x;
-            }
-            else if (collider is CapsuleCollider capsuleCollider)
-            {
-                cylinderRadius = capsuleCollider.radius * cylinderPlatform.transform.localScale.x;
-            }
-            else if (collider is MeshCollider)
-            {
-                // 使用缩放作为半径估算
-                cylinderRadius = cylinderPlatform.transform.localScale.x / 2f;
-            }
-        }
-
-        // 计算从平台到圆柱中心的方向（背离圆柱体中心）
-        Vector3 directionFromCenter = (platformPosition - centerPos).normalized;
-        
-        // 圆柱中心位置 = 平台位置 + 方向 * (圆柱半径 + 平台宽度/2 + 额外间距)
-        // 使用平台宽度的一半，因为平台位置是中心位置
-        float totalDistance = cylinderRadius + (platformWidth / 2f) + extraGap;
-        Vector3 cylinderPosition = platformPosition + directionFromCenter * totalDistance;
-        
-        // 保持与平台同一高度
-        cylinderPosition.y = platformPosition.y;
-
-        return cylinderPosition;
-    }
-
-    }
+}
