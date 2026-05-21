@@ -205,44 +205,27 @@ public class PlatformSpawner : MonoBehaviour
         GameObject platform = PlatformPool.Instance.GetPlatform(position, scale);
 
         if (platform != null)
-        {
-            if (debugMode)
-                Debug.Log($"SpawnPlatform: 生成平台 #{platformIndex} at ({x:F2}, {y:F2}, {z:F2})");
-
-            // 查找NPC生成器，在新平台上生成NPC（只在第二个平台生成）
-            SimpleNPCSpawner npcSpawner = FindObjectOfType<SimpleNPCSpawner>();
-            if (npcSpawner != null)
             {
-                npcSpawner.SpawnNPCOnPlatform(platform, platformIndex);
-            }
+                if (debugMode)
+                    Debug.Log($"SpawnPlatform: 生成平台 #{platformIndex} at ({x:F2}, {y:F2}, {z:F2})");
 
-            // 获取平台组件，检查是否有NPC
-            Platform platformComp = platform.GetComponent<Platform>();
-            bool hasNPC = platformComp != null && platformComp.HasNPC;
-
-            // 如果平台没有NPC，才生成Enemy
-            if (!hasNPC)
-            {
+                // 生成Enemy
                 EnemySpawner enemySpawner = FindObjectOfType<EnemySpawner>();
                 if (enemySpawner != null)
                 {
                     enemySpawner.SpawnEnemyOnPlatform(platform, platformIndex);
                 }
-            }
 
-            // 如果平台没有NPC，才生成金币
-            if (!hasNPC)
-            {
+                // 生成金币
                 CoinSpawner coinSpawner = FindObjectOfType<CoinSpawner>();
                 if (coinSpawner != null)
                 {
                     coinSpawner.SpawnCoinsOnNewPlatform(platform);
                 }
-            }
 
-            // 平台计数器递增
-            platformIndex++;
-        }
+                // 平台计数器递增
+                platformIndex++;
+            }
         else
         {
             if (debugMode)
