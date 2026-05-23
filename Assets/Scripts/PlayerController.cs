@@ -107,6 +107,9 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     void Update()
     {
+        // 如果游戏暂停，不处理输入
+        if (Time.timeScale <= 0f) return;
+
         // 处理玩家角色朝向旋转
         // 旋转在Update中处理，因为涉及平滑插值，与帧率相关
         HandleRotation();
@@ -119,6 +122,9 @@ public class PlayerController : MonoBehaviour
     /// </summary>
     void FixedUpdate()
     {
+        // 如果游戏暂停，不处理输入
+        if (Time.timeScale <= 0f) return;
+
         // 处理玩家移动物理
         // 使用固定时间步长确保物理模拟的稳定性
         HandleMovement();

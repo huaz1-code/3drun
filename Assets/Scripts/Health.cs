@@ -23,6 +23,13 @@ public class Health : MonoBehaviour
     public bool allowOverheal = false;
 
     /// <summary>
+    /// 死亡后暂停游戏的延迟时间（秒）
+    /// 0表示立即暂停，大于0表示延迟指定秒数后暂停
+    /// </summary>
+    [Tooltip("死亡后暂停游戏的延迟时间（秒）")]
+    public float deathPauseDelay = 0f;
+
+    /// <summary>
     /// 当前生命值
     /// </summary>
     private float currentHealth;
@@ -211,6 +218,26 @@ public class Health : MonoBehaviour
     {
         isDead = true;
         OnDeath?.Invoke();
+
+        if (deathPauseDelay <= 0f)
+        {
+            // 立即暂停
+            Time.timeScale = 0f;
+        }
+        else
+        {
+            // 延迟暂停
+            StartCoroutine(DelayedPauseCoroutine());
+        }
+    }
+
+    /// <summary>
+    /// 延迟暂停的协程
+    /// </summary>
+    private System.Collections.IEnumerator DelayedPauseCoroutine()
+    {
+        yield return new WaitForSeconds(deathPauseDelay);
+        Time.timeScale = 0f;
     }
 
     /// <summary>

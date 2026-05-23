@@ -111,6 +111,34 @@ public class CameraController : MonoBehaviour
         // 如果没有目标，直接返回
         if (target == null) return;
 
+        // 声明变量供后续使用
+        Quaternion rotation;
+        Vector3 targetPosition;
+        Vector3 desiredPosition;
+
+        // 如果游戏暂停，不处理鼠标输入，只保持摄像机跟随位置
+        if (Time.timeScale <= 0f)
+        {
+            // 游戏暂停时，只更新摄像机位置，不更新视角
+            // 使用当前的旋转角度
+            rotation = Quaternion.Euler(currentVerticalAngle, currentHorizontalAngle, 0);
+            
+            // 计算目标位置
+            targetPosition = target.position + Vector3.up * height;
+            desiredPosition = targetPosition - (rotation * Vector3.forward) * distance;
+            
+            // 平滑移动到目标位置
+            transform.position = Vector3.Lerp(
+                transform.position,
+                desiredPosition,
+                followSmoothSpeed * Time.unscaledDeltaTime  // 使用 unscaledDeltaTime，不受暂停影响
+            );
+            
+            // 保持摄像机旋转
+            transform.rotation = rotation;
+            return;
+        }
+
         // ========== 获取鼠标输入 ==========
         // GetAxis 返回平滑的输入值（-1到1）
         float mouseX = Input.GetAxis("Mouse X");
@@ -131,16 +159,16 @@ public class CameraController : MonoBehaviour
         // ========== 计算摄像机朝向 ==========
         // 使用欧拉角创建旋转四元数
         // 参数顺序：X（俯仰），Y（偏航），Z（翻滚）
-        Quaternion rotation = Quaternion.Euler(currentVerticalAngle, currentHorizontalAngle, 0);
+        rotation = Quaternion.Euler(currentVerticalAngle, currentHorizontalAngle, 0);
 
         // ========== 计算摄像机位置 ==========
         // 目标位置 = 玩家位置 + 向上偏移
-        Vector3 targetPosition = target.position + Vector3.up * height;
+        targetPosition = target.position + Vector3.up * height;
 
         // 期望位置 = 目标位置 - (旋转方向 * 距离)
         // 旋转的forward向量表示摄像机应该看的方向
         // 乘以距离得到摄像机应该在的位置
-        Vector3 desiredPosition = targetPosition - (rotation * Vector3.forward) * distance;
+        desiredPosition = targetPosition - (rotation * Vector3.forward) * distance;
 
         // ========== 平滑移动到目标位置 ==========
         // Vector3.Lerp 线性插值两个位置
