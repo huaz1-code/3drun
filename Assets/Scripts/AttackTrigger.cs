@@ -36,6 +36,12 @@ public class AttackTrigger : MonoBehaviour
     public Color textColor = Color.white;
 
     /// <summary>
+    /// 提示文字字体
+    /// </summary>
+    [Tooltip("提示文字字体")]
+    public TMP_FontAsset fontAsset;
+
+    /// <summary>
     /// 触发器视觉标记 - 用于显示激活状态的对象
     /// </summary>
     [Tooltip("触发器视觉标记")]
@@ -124,7 +130,21 @@ public class AttackTrigger : MonoBehaviour
         overheadText.fontSize = fontSize;
         overheadText.color = textColor;
         overheadText.alignment = TextAlignmentOptions.Center;
-        overheadText.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+        
+        // 使用用户指定的字体，如果没有指定则使用默认字体
+        if (fontAsset != null)
+        {
+            overheadText.font = fontAsset;
+        }
+        else
+        {
+            // 尝试加载项目中的默认字体
+            TMP_FontAsset defaultFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+            if (defaultFont != null)
+            {
+                overheadText.font = defaultFont;
+            }
+        }
 
         // 隐藏文本
         textObject.SetActive(false);

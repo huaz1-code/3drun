@@ -6,6 +6,7 @@ using UnityEngine;
 /// 功能说明：
 /// 1. 跟踪所有激活的AttackTrigger
 /// 2. 当两个触发器激活时，在它们之间绘制连线
+/// 3. 当玩家或Boss碰到连线时，重置所有触发器
 /// </summary>
 public class AttackTriggerManager : MonoBehaviour
 {
@@ -33,6 +34,12 @@ public class AttackTriggerManager : MonoBehaviour
     public Color lineColor = Color.yellow;
 
     /// <summary>
+    /// 连线碰撞检测半径
+    /// </summary>
+    [Tooltip("连线碰撞检测半径")]
+    public float collisionRadius = 0.5f;
+
+    /// <summary>
     /// 所有已激活的触发器列表
     /// </summary>
     private List<AttackTrigger> activatedTriggers = new List<AttackTrigger>();
@@ -41,6 +48,16 @@ public class AttackTriggerManager : MonoBehaviour
     /// 用于绘制连线的LineRenderer
     /// </summary>
     private LineRenderer lineRenderer;
+
+    /// <summary>
+    /// 用于碰撞检测的对象
+    /// </summary>
+    private GameObject collisionObject;
+
+    /// <summary>
+    /// 碰撞检测的SphereCollider
+    /// </summary>
+    private SphereCollider[] sphereColliders;
 
     void Awake()
     {
@@ -67,6 +84,74 @@ public class AttackTriggerManager : MonoBehaviour
         lineRenderer.endColor = lineColor;
         lineRenderer.positionCount = 0;
         lineRenderer.enabled = false;
+
+        // 创建碰撞检测对象
+        CreateCollisionObject();
+    }
+
+    /// <summary>
+    /// 创建碰撞检测对象
+    /// </summary>
+    void CreateCollisionObject()
+    {
+        collisionObject = new GameObject("AttackLineCollision");
+        collisionObject.transform.SetParent(transform);
+    }
+
+    /// <summary>
+    /// 更新碰撞检测
+    /// </summary>
+    void UpdateCollision()
+    {
+        // 先清除旧的碰撞检测
+        ClearCollision();
+
+        if (activatedTriggers.Count >= 2)
+        {
+            // 在连线上创建多个SphereCollider进行碰撞检测
+            Vector3 start = activatedTriggers[0].transform.position;
+            Vector3 end = activatedTriggers[1].transform.position;
+            float distance = Vector3.Distance(start, end);
+            
+            // 计算需要多少个碰撞检测点（每隔0.5米一个）
+            int colliderCount = Mathf.Max(2, Mathf.CeilToInt(distance / 0.5f));
+            sphereColliders = new SphereCollider[colliderCount];
+
+            for (int i = 0; i < colliderCount; i++)
+            {
+                float t = (float)i / (colliderCount - 1);
+                Vector3 position = Vector3.Lerp(start, end, t);
+
+                GameObject colliderObj = new GameObject($"Collider_{i}");
+                colliderObj.transform.SetParent(collisionObject.transform);
+                colliderObj.transform.position = position;
+
+                SphereCollider collider = colliderObj.AddComponent<SphereCollider>();
+                collider.isTrigger = true;
+                collider.radius = collisionRadius;
+
+                sphereColliders[i] = collider;
+
+                // 添加碰撞检测脚本
+                LineCollisionDetector detector = colliderObj.AddComponent<LineCollisionDetector>();
+                detector.manager = this;
+            }
+        }
+    }
+
+    /// <summary>
+    /// 清除碰撞检测
+    /// </summary>
+    void ClearCollision()
+    {
+        if (collisionObject != null)
+        {
+            foreach (Transform child in collisionObject.transform)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+        sphereColliders = null;
     }
 
     /// <summary>
@@ -96,11 +181,16 @@ public class AttackTriggerManager : MonoBehaviour
             lineRenderer.SetPosition(0, activatedTriggers[0].transform.position);
             lineRenderer.SetPosition(1, activatedTriggers[1].transform.position);
             lineRenderer.enabled = true;
+            
+            // 更新碰撞检测
+            UpdateCollision();
+            
             Debug.Log("连线已绘制在 " + activatedTriggers[0].gameObject.name + " 和 " + activatedTriggers[1].gameObject.name + " 之间");
         }
         else
         {
             lineRenderer.enabled = false;
+            ClearCollision();
         }
     }
 
@@ -111,7 +201,32 @@ public class AttackTriggerManager : MonoBehaviour
         {
             lineRenderer.SetPosition(0, activatedTriggers[0].transform.position);
             lineRenderer.SetPosition(1, activatedTriggers[1].transform.position);
+            
+            // 更新碰撞检测位置
+            if (sphereColliders != null && sphereColliders.Length >= 2)
+            {
+                Vector3 start = activatedTriggers[0].transform.position;
+                Vector3 end = activatedTriggers[1].transform.position;
+                
+                for (int i = 0; i < sphereColliders.Length; i++)
+                {
+                    if (sphereColliders[i] != null)
+                    {
+                        float t = (float)i / (sphereColliders.Length - 1);
+                        sphereColliders[i].transform.position = Vector3.Lerp(start, end, t);
+                    }
+                }
+            }
         }
+    }
+
+    /// <summary>
+    /// 当检测到玩家或Boss碰到连线时调用
+    /// </summary>
+    public void OnLineHit()
+    {
+        Debug.Log("连线被触碰，重置所有触发器");
+        ResetAllTriggers();
     }
 
     /// <summary>
@@ -126,6 +241,7 @@ public class AttackTriggerManager : MonoBehaviour
         activatedTriggers.Clear();
         lineRenderer.enabled = false;
         lineRenderer.positionCount = 0;
+        ClearCollision();
         Debug.Log("所有触发器已重置");
     }
 
@@ -135,5 +251,25 @@ public class AttackTriggerManager : MonoBehaviour
     public int GetActivatedCount()
     {
         return activatedTriggers.Count;
+    }
+}
+
+/// <summary>
+/// 连线碰撞检测脚本
+/// </summary>
+public class LineCollisionDetector : MonoBehaviour
+{
+    public AttackTriggerManager manager;
+
+    void OnTriggerEnter(Collider other)
+    {
+        // 检测是否是玩家或Boss
+        if (other.CompareTag("Player") || other.CompareTag("Boss"))
+        {
+            if (manager != null)
+            {
+                manager.OnLineHit();
+            }
+        }
     }
 }
