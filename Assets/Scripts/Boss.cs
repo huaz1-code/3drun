@@ -11,12 +11,17 @@ public class Boss : MonoBehaviour
     [Tooltip("是否开始追踪玩家")]
     public bool isChasing = false;
 
+    [Tooltip("死亡后是否销毁Boss对象")]
+    public bool destroyOnDeath = true;
+
     private Transform player;
     private Rigidbody rb;
+    private Health health;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+        health = GetComponent<Health>();
         
         // 冻结物理旋转，只允许代码控制旋转
         rb.freezeRotation = true;
@@ -28,6 +33,12 @@ public class Boss : MonoBehaviour
         if (gameObject.tag != "Boss")
         {
             Debug.LogWarning("Boss对象没有设置Boss标签，请在Unity编辑器中设置标签为Boss！");
+        }
+        
+        // 订阅死亡事件
+        if (health != null)
+        {
+            health.OnDeath += OnBossDeath;
         }
         
         FindPlayer();
@@ -105,5 +116,34 @@ public class Boss : MonoBehaviour
     {
         // 持续碰撞时重置角速度
         rb.angularVelocity = Vector3.zero;
+    }
+
+    /// <summary>
+    /// Boss死亡处理
+    /// </summary>
+    private void OnBossDeath()
+    {
+        Debug.Log("Boss已死亡！");
+        
+        // 停止追踪
+        StopChasing();
+        
+        // 如果设置为死亡后销毁
+        if (destroyOnDeath)
+        {
+            Destroy(gameObject);
+            Debug.Log("Boss对象已销毁");
+        }
+    }
+
+    /// <summary>
+    /// 清理事件订阅
+    /// </summary>
+    private void OnDestroy()
+    {
+        if (health != null)
+        {
+            health.OnDeath -= OnBossDeath;
+        }
     }
 }

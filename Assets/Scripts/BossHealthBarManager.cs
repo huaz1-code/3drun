@@ -3,6 +3,7 @@ using UnityEngine;
 /// <summary>
 /// Boss血条管理器
 /// 功能：管理Boss血条的显示和隐藏，绑定Boss的Health组件
+/// 注意：HealthBar组件不在Boss对象上，而是在UI面板上
 /// </summary>
 public class BossHealthBarManager : MonoBehaviour
 {
@@ -16,11 +17,6 @@ public class BossHealthBarManager : MonoBehaviour
     /// Boss Health组件引用
     /// </summary>
     private Health bossHealth;
-
-    /// <summary>
-    /// Boss HealthBar组件引用
-    /// </summary>
-    private HealthBar healthBar;
 
     /// <summary>
     /// Boss对象引用
@@ -57,14 +53,6 @@ public class BossHealthBarManager : MonoBehaviour
         if (bossHealth == null)
         {
             Debug.LogError("BossHealthBarManager: Boss对象上没有Health组件！");
-            return;
-        }
-
-        // 获取Boss的HealthBar组件
-        healthBar = bossObject.GetComponent<HealthBar>();
-        if (healthBar == null)
-        {
-            Debug.LogError("BossHealthBarManager: Boss对象上没有HealthBar组件！请在Boss对象上添加HealthBar脚本。");
             return;
         }
 

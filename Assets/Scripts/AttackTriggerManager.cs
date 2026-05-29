@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,7 +6,7 @@ using UnityEngine;
 /// 攻击触发器管理器 - 管理多个AttackTrigger之间的连线
 /// 功能说明：
 /// 1. 跟踪所有激活的AttackTrigger
-/// 2. 当两个触发器激活时，在它们之间绘制连线
+/// 2. 当两个触发器激活时，在它们之间绘制连线（支持延时）
 /// 3. 当玩家或Boss碰到连线时，重置所有触发器
 /// </summary>
 public class AttackTriggerManager : MonoBehaviour
@@ -40,6 +41,41 @@ public class AttackTriggerManager : MonoBehaviour
     public float collisionRadius = 0.5f;
 
     /// <summary>
+    /// 连线出现延时时间（秒）
+    /// </summary>
+    [Tooltip("两个触发器都激活后，连线出现的延时时间（秒）")]
+    public float lineDelay = 2f;
+
+    /// <summary>
+    /// 连线伤害值
+    /// </summary>
+    [Tooltip("玩家或Boss碰到连线时受到的伤害值")]
+    public float lineDamage = 20f;
+
+    /// <summary>
+    /// 是否在造成伤害后销毁连线
+    /// </summary>
+    [Tooltip("是否在造成伤害后销毁连线")]
+    public bool destroyOnHit = true;
+
+    /// <summary>
+    /// 伤害冷却时间（秒）
+    /// 防止同一目标在短时间内多次受到连线伤害
+    /// </summary>
+    [Tooltip("伤害冷却时间（秒）- 防止同一目标在短时间内多次受到连线伤害")]
+    public float damageCooldown = 1f;
+
+    /// <summary>
+    /// 上一次受到伤害的目标名称
+    /// </summary>
+    private string lastHitTarget;
+
+    /// <summary>
+    /// 上一次造成伤害的时间
+    /// </summary>
+    private float lastHitTime;
+
+    /// <summary>
     /// 所有已激活的触发器列表
     /// </summary>
     private List<AttackTrigger> activatedTriggers = new List<AttackTrigger>();
@@ -58,6 +94,11 @@ public class AttackTriggerManager : MonoBehaviour
     /// 碰撞检测的SphereCollider
     /// </summary>
     private SphereCollider[] sphereColliders;
+
+    /// <summary>
+    /// 当前正在运行的延时协程
+    /// </summary>
+    private Coroutine delayCoroutine;
 
     void Awake()
     {
@@ -176,6 +217,57 @@ public class AttackTriggerManager : MonoBehaviour
     {
         if (activatedTriggers.Count >= 2)
         {
+            // 如果有延时，启动延时协程
+            if (lineDelay > 0)
+            {
+                // 如果已有协程在运行，先停止它
+                if (delayCoroutine != null)
+                {
+                    StopCoroutine(delayCoroutine);
+                }
+                
+                // 启动新的延时协程
+                delayCoroutine = StartCoroutine(ShowLineWithDelay());
+                Debug.Log("等待 " + lineDelay + " 秒后显示连线...");
+            }
+            else
+            {
+                // 无延时，立即显示连线
+                ShowLine();
+            }
+        }
+        else
+        {
+            // 如果有协程在运行，停止它
+            if (delayCoroutine != null)
+            {
+                StopCoroutine(delayCoroutine);
+                delayCoroutine = null;
+            }
+            
+            lineRenderer.enabled = false;
+            ClearCollision();
+        }
+    }
+
+    /// <summary>
+    /// 延时显示连线的协程
+    /// </summary>
+    IEnumerator ShowLineWithDelay()
+    {
+        yield return new WaitForSeconds(lineDelay);
+        
+        ShowLine();
+        delayCoroutine = null;
+    }
+
+    /// <summary>
+    /// 显示连线
+    /// </summary>
+    void ShowLine()
+    {
+        if (activatedTriggers.Count >= 2)
+        {
             // 在第一个和第二个激活的触发器之间绘制连线
             lineRenderer.positionCount = 2;
             lineRenderer.SetPosition(0, activatedTriggers[0].transform.position);
@@ -186,11 +278,6 @@ public class AttackTriggerManager : MonoBehaviour
             UpdateCollision();
             
             Debug.Log("连线已绘制在 " + activatedTriggers[0].gameObject.name + " 和 " + activatedTriggers[1].gameObject.name + " 之间");
-        }
-        else
-        {
-            lineRenderer.enabled = false;
-            ClearCollision();
         }
     }
 
@@ -223,10 +310,42 @@ public class AttackTriggerManager : MonoBehaviour
     /// <summary>
     /// 当检测到玩家或Boss碰到连线时调用
     /// </summary>
-    public void OnLineHit()
+    /// <param name="hitCollider">碰撞到连线的对象的Collider</param>
+    public void OnLineHit(Collider hitCollider)
     {
-        Debug.Log("连线被触碰，重置所有触发器");
-        ResetAllTriggers();
+        string targetName = hitCollider.gameObject.name;
+        float currentTime = Time.time;
+
+        // 检查是否在冷却时间内
+        if (targetName == lastHitTarget && currentTime - lastHitTime < damageCooldown)
+        {
+            // 还在冷却中，不造成伤害
+            Debug.Log(targetName + " 处于伤害冷却中，跳过伤害");
+            return;
+        }
+
+        // 更新伤害记录
+        lastHitTarget = targetName;
+        lastHitTime = currentTime;
+
+        // 尝试获取Health组件并造成伤害
+        Health health = hitCollider.GetComponent<Health>();
+        if (health != null)
+        {
+            health.TakeDamage(lineDamage);
+            Debug.Log(targetName + " 碰到连线，受到 " + lineDamage + " 点伤害");
+        }
+        else
+        {
+            Debug.LogWarning(targetName + " 没有 Health 组件，无法造成伤害");
+        }
+
+        // 如果设置为碰撞后销毁连线
+        if (destroyOnHit)
+        {
+            Debug.Log("连线被触碰，重置所有触发器");
+            ResetAllTriggers();
+        }
     }
 
     /// <summary>
@@ -234,6 +353,13 @@ public class AttackTriggerManager : MonoBehaviour
     /// </summary>
     public void ResetAllTriggers()
     {
+        // 如果有延时协程在运行，停止它
+        if (delayCoroutine != null)
+        {
+            StopCoroutine(delayCoroutine);
+            delayCoroutine = null;
+        }
+        
         foreach (var trigger in activatedTriggers)
         {
             trigger.ResetTrigger();
@@ -268,7 +394,7 @@ public class LineCollisionDetector : MonoBehaviour
         {
             if (manager != null)
             {
-                manager.OnLineHit();
+                manager.OnLineHit(other);
             }
         }
     }
