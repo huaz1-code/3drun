@@ -77,7 +77,7 @@ public class KillOnFall : MonoBehaviour
         if (health.IsDead()) return;
 
         // 检查玩家是否低于Plane位置
-        if (transform.position.y < deathY)
+        if (transform.position.y < deathY-5)
         {
             // 标记已因掉落死亡
             hasDiedFromFall = true;

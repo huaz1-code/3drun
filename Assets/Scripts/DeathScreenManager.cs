@@ -110,6 +110,20 @@ public class DeathScreenManager : MonoBehaviour
     }
 
     /// <summary>
+    /// 返回主菜单（按钮点击调用）
+    /// </summary>
+    public void ReturnToMainMenu()
+    {
+        Debug.Log("DeathScreenManager: 返回主菜单");
+
+        // 恢复时间缩放
+        Time.timeScale = 1f;
+
+        // 加载开始场景
+        SceneManager.LoadScene("StartScence");
+    }
+
+    /// <summary>
     /// 清理事件订阅
     /// </summary>
     void OnDestroy()
