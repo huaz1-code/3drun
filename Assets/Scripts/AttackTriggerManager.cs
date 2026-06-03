@@ -150,8 +150,8 @@ public class AttackTriggerManager : MonoBehaviour
         if (activatedTriggers.Count >= 2)
         {
             // 在连线上创建多个SphereCollider进行碰撞检测
-            Vector3 start = activatedTriggers[0].transform.position;
-            Vector3 end = activatedTriggers[1].transform.position;
+            Vector3 start = activatedTriggers[0].GetLinePosition();
+            Vector3 end = activatedTriggers[1].GetLinePosition();
             float distance = Vector3.Distance(start, end);
             
             // 计算需要多少个碰撞检测点（每隔0.5米一个）
@@ -270,8 +270,8 @@ public class AttackTriggerManager : MonoBehaviour
         {
             // 在第一个和第二个激活的触发器之间绘制连线
             lineRenderer.positionCount = 2;
-            lineRenderer.SetPosition(0, activatedTriggers[0].transform.position);
-            lineRenderer.SetPosition(1, activatedTriggers[1].transform.position);
+            lineRenderer.SetPosition(0, activatedTriggers[0].GetLinePosition());
+            lineRenderer.SetPosition(1, activatedTriggers[1].GetLinePosition());
             lineRenderer.enabled = true;
             
             // 更新碰撞检测
@@ -286,14 +286,14 @@ public class AttackTriggerManager : MonoBehaviour
         // 如果连线启用，持续更新位置（以防触发器移动）
         if (lineRenderer.enabled && activatedTriggers.Count >= 2)
         {
-            lineRenderer.SetPosition(0, activatedTriggers[0].transform.position);
-            lineRenderer.SetPosition(1, activatedTriggers[1].transform.position);
+            lineRenderer.SetPosition(0, activatedTriggers[0].GetLinePosition());
+            lineRenderer.SetPosition(1, activatedTriggers[1].GetLinePosition());
             
             // 更新碰撞检测位置
             if (sphereColliders != null && sphereColliders.Length >= 2)
             {
-                Vector3 start = activatedTriggers[0].transform.position;
-                Vector3 end = activatedTriggers[1].transform.position;
+                Vector3 start = activatedTriggers[0].GetLinePosition();
+                Vector3 end = activatedTriggers[1].GetLinePosition();
                 
                 for (int i = 0; i < sphereColliders.Length; i++)
                 {

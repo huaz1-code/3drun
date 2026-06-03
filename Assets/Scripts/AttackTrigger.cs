@@ -60,6 +60,37 @@ public class AttackTrigger : MonoBehaviour
     public Color activeColor = Color.green;
 
     /// <summary>
+    /// 连线点位置类型
+    /// </summary>
+    [Tooltip("连线点的位置类型")]
+    public PositionType linePositionType = PositionType.Center;
+
+    /// <summary>
+    /// 自定义偏移位置（当选择CustomOffset时使用）
+    /// </summary>
+    [Tooltip("自定义偏移位置（当选择CustomOffset时使用）")]
+    public Vector3 customOffset = Vector3.zero;
+
+    /// <summary>
+    /// 位置类型枚举
+    /// </summary>
+    public enum PositionType
+    {
+        /// <summary>
+        /// 使用对象原点位置（transform.position）
+        /// </summary>
+        Origin,
+        /// <summary>
+        /// 使用对象中心位置（Renderer bounds中心）
+        /// </summary>
+        Center,
+        /// <summary>
+        /// 使用自定义偏移位置
+        /// </summary>
+        CustomOffset
+    }
+
+    /// <summary>
     /// 是否已经激活
     /// </summary>
     private bool isActivated = false;
@@ -276,6 +307,56 @@ public class AttackTrigger : MonoBehaviour
     public bool IsActivated()
     {
         return isActivated;
+    }
+
+    /// <summary>
+    /// 获取连线点的位置
+    /// 根据配置的linePositionType返回对应的位置
+    /// </summary>
+    /// <returns>连线点的世界坐标位置</returns>
+    public Vector3 GetLinePosition()
+    {
+        switch (linePositionType)
+        {
+            case PositionType.Origin:
+                return transform.position;
+            
+            case PositionType.Center:
+                return GetRendererCenter();
+            
+            case PositionType.CustomOffset:
+                return transform.position + customOffset;
+            
+            default:
+                return transform.position;
+        }
+    }
+
+    /// <summary>
+    /// 获取渲染器的中心位置
+    /// 如果有visualMarker则使用它的中心，否则使用自身Renderer的中心
+    /// </summary>
+    /// <returns>Renderer的中心世界坐标</returns>
+    private Vector3 GetRendererCenter()
+    {
+        Renderer targetRenderer = null;
+        
+        if (visualMarker != null)
+        {
+            targetRenderer = visualMarker.GetComponent<Renderer>();
+        }
+        
+        if (targetRenderer == null)
+        {
+            targetRenderer = GetComponent<Renderer>();
+        }
+        
+        if (targetRenderer != null)
+        {
+            return targetRenderer.bounds.center;
+        }
+        
+        return transform.position;
     }
 
     /// <summary>
