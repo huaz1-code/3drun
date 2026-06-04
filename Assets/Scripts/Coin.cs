@@ -106,7 +106,7 @@ public class Coin : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             // 增加金币计数
-            CoinCounter.AddCoin();
+            CoinUIManager.AddCoin();
 
             // 通知所属平台，金币已被收集
             if (parentPlatform != null)

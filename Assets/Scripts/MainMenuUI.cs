@@ -8,6 +8,10 @@ public class MainMenuUI : MonoBehaviour
     public void StartGame()
     {
         Time.timeScale = 1f;
+        
+        // 重置金币计数
+        CoinUIManager.ResetCoinsAndRefreshUI();
+        
         SceneManager.LoadScene(gameSceneName);
     }
 

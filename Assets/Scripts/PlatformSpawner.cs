@@ -50,25 +50,35 @@ public class PlatformSpawner : MonoBehaviour
     public float rotationPerPlatform = 45f;
 
     /// <summary>
-    /// 平台宽度 - X轴缩放值
-    /// 决定平台的左右长度
+    /// 平台最小宽度 - X轴最小缩放值
     /// </summary>
-    [Tooltip("平台宽度")]
-    public float scaleX = 5f;
+    [Tooltip("平台最小宽度")]
+    public float minScaleX = 3f;
+
+    /// <summary>
+    /// 平台最大宽度 - X轴最大缩放值
+    /// </summary>
+    [Tooltip("平台最大宽度")]
+    public float maxScaleX = 7f;
 
     /// <summary>
     /// 平台高度 - Y轴缩放值
-    /// 决定平台的厚度
+    /// 决定平台的厚度（保持不变）
     /// </summary>
     [Tooltip("平台高度")]
     public float scaleY = 0.5f;
 
     /// <summary>
-    /// 平台深度 - Z轴缩放值
-    /// 决定平台的前后长度
+    /// 平台最小深度 - Z轴最小缩放值
     /// </summary>
-    [Tooltip("平台深度")]
-    public float scaleZ = 3f;
+    [Tooltip("平台最小深度")]
+    public float minScaleZ = 2f;
+
+    /// <summary>
+    /// 平台最大深度 - Z轴最大缩放值
+    /// </summary>
+    [Tooltip("平台最大深度")]
+    public float maxScaleZ = 4f;
 
     /// <summary>
     /// 回收距离 - 玩家身后超过此距离的平台将被回收
@@ -199,7 +209,10 @@ public class PlatformSpawner : MonoBehaviour
 
         // 构建平台的位置和缩放向量
         Vector3 position = new Vector3(x, y, z);
-        Vector3 scale = new Vector3(scaleX, scaleY, scaleZ);
+        // 随机生成平台宽度和深度，保持厚度不变
+        float randomScaleX = Random.Range(minScaleX, maxScaleX);
+        float randomScaleZ = Random.Range(minScaleZ, maxScaleZ);
+        Vector3 scale = new Vector3(randomScaleX, scaleY, randomScaleZ);
 
         // 从对象池获取平台实例
         GameObject platform = PlatformPool.Instance.GetPlatform(position, scale);

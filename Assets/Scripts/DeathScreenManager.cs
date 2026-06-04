@@ -105,6 +105,9 @@ public class DeathScreenManager : MonoBehaviour
         // 隐藏死亡界面
         HideDeathScreen();
 
+        // 重置金币计数并刷新UI引用
+        CoinUIManager.ResetCoinsAndRefreshUI();
+
         // 重新加载当前场景
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
@@ -118,6 +121,9 @@ public class DeathScreenManager : MonoBehaviour
 
         // 恢复时间缩放
         Time.timeScale = 1f;
+
+        // 重置金币计数并刷新UI引用
+        CoinUIManager.ResetCoinsAndRefreshUI();
 
         // 加载开始场景
         SceneManager.LoadScene("StartScence");
