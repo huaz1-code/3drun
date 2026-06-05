@@ -7,7 +7,6 @@ using System.Collections.Generic;
 /// 1. 为已存在的平台生成金币
 /// 2. 为新生成的平台生成金币
 /// 3. 根据概率随机决定是否生成
-/// 4. 避免在有Enemy的平台上生成金币
 /// </summary>
 public class CoinSpawner : MonoBehaviour
 {
@@ -61,9 +60,8 @@ public class CoinSpawner : MonoBehaviour
             // 检查是否符合生成条件：
             // 1. 平台必须有Platform组件
             // 2. 平台当前没有金币
-            // 3. 平台上没有Enemy
-            // 4. 平台上没有NPC
-            if (platformComp != null && !platformComp.HasCoin() && !platformComp.HasEnemy && !platformComp.HasNPC)
+            // 3. 平台上没有NPC
+            if (platformComp != null && !platformComp.HasCoin() && !platformComp.HasNPC)
             {
                 // 使用概率决定是否生成
                 // Random.value 返回[0, 1)范围内的随机值
@@ -91,9 +89,8 @@ public class CoinSpawner : MonoBehaviour
         // 检查是否符合生成条件
         // 1. 平台必须有Platform组件
         // 2. 平台当前没有金币
-        // 3. 平台上没有Enemy
-        // 4. 平台上没有NPC
-        if (platformComp == null || platformComp.HasCoin() || platformComp.HasEnemy || platformComp.HasNPC)
+        // 3. 平台上没有NPC
+        if (platformComp == null || platformComp.HasCoin() || platformComp.HasNPC)
         {
             return;
         }

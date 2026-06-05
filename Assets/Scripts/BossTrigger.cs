@@ -38,7 +38,6 @@ public class BossTrigger : MonoBehaviour
         DestroyRoad();
         DestroyNPCs();
         RecyclePlatforms();
-        RecycleEnemies();
         StopPlatformSpawning();
         ActivateBoss();
     }
@@ -99,27 +98,6 @@ public class BossTrigger : MonoBehaviour
         else
         {
             Debug.LogWarning("没有找到 PlatformPool 实例");
-        }
-    }
-
-    private void RecycleEnemies()
-    {
-        if (EnemyPool.Instance != null)
-        {
-            int enemyCount = 0;
-            foreach (Transform child in EnemyPool.Instance.transform)
-            {
-                if (child.gameObject.activeSelf)
-                {
-                    EnemyPool.Instance.ReturnEnemy(child.gameObject);
-                    enemyCount++;
-                }
-            }
-            Debug.Log($"回收了 {enemyCount} 个 Enemy 对象");
-        }
-        else
-        {
-            Debug.LogWarning("没有找到 EnemyPool 实例");
         }
     }
 

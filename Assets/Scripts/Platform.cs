@@ -1,110 +1,234 @@
 using UnityEngine;
 
-/// <summary>
-/// 平台脚本 - 负责管理单个平台的状态
-/// 功能说明：
-/// 1. 记录当前平台上的金币和Enemy引用
-/// 2. 提供金币/Enemy的设置和回收接口
-/// 3. 随机切换平台材质（视觉效果）
-/// 4. 对象回收时自动清理子对象
-/// </summary>
+public enum PlatformType
+{
+    Normal,
+    Damage,
+    Temporary,
+    Slippery
+}
+
 public class Platform : MonoBehaviour
 {
-    /// <summary>
-    /// 材质列表 - 平台可以随机切换的材质数组
-    /// 在Inspector中拖拽多个材质，平台会随机选择
-    /// 用于增加视觉多样性
-    /// </summary>
-    [Tooltip("材质列表（随机切换）")]
-    public Material[] materials;
+    [Tooltip("普通平台材质")]
+    public Material normalMaterial;
 
-    /// <summary>
-    /// 调试模式 - 是否输出调试日志
-    /// 开启后会在金币/Enemy设置和回收时打印信息
-    /// </summary>
+    [Tooltip("伤害平台材质（红色）")]
+    public Material damageMaterial;
+
+    [Tooltip("临时平台材质（半透明）")]
+    public Material temporaryMaterial;
+
+    [Tooltip("滑动平台材质（光滑）")]
+    public Material slipperyMaterial;
+
+    [Tooltip("滑动平台物理材质")]
+    public PhysicMaterial slipperyPhysicMaterial;
+
+    [Tooltip("伤害平台每次伤害值")]
+    public int damageAmount = 1;
+
+    [Tooltip("伤害平台伤害间隔时间（秒）")]
+    public float damageInterval = 0.5f;
+
+    [Tooltip("临时平台持续时间（秒）")]
+    public float temporaryDuration = 3f;
+
     [Tooltip("调试模式")]
     public bool debugMode = false;
 
-    /// <summary>
-    /// 平台渲染器引用 - 用于更换材质
-    /// </summary>
-    private Renderer platformRenderer;
+    [Tooltip("玩家检测盒子半尺寸")]
+    public Vector3 playerCheckHalfExtents = new Vector3(0.5f, 0.1f, 0.5f);
 
-    /// <summary>
-    /// 当前金币引用 - 记录此平台上生成的金币
-    /// null表示没有金币
-    /// </summary>
+    [Tooltip("玩家检测偏移（向上偏移检测玩家）")]
+    public Vector3 playerCheckOffset = new Vector3(0, 0.5f, 0);
+
+    [Tooltip("玩家层")]
+    public LayerMask playerLayer;
+
+    private Renderer platformRenderer;
+    private Collider platformCollider;
+    private PlatformType currentType;
+    private float temporaryTimer;
+    private float damageTimer;
+    private bool isPlayerOnTemporary;
+    private bool wasPlayerOnPlatform;
+    private bool isPlayerOnPlatform;
+
     private GameObject currentCoin;
 
     /// <summary>
-    /// 当前Enemy引用 - 记录此平台上生成的Enemy
-    /// null表示没有Enemy
-    /// </summary>
-    private GameObject currentEnemy;
-
-    /// <summary>
-    /// Enemy存在标记 - 表示平台上是否有Enemy
-    /// 用于避免在有Enemy的平台上生成金币
-    /// </summary>
-    public bool HasEnemy { get; set; }
-
-    /// <summary>
     /// NPC存在标记 - 表示平台上是否有NPC
-    /// 用于避免在有NPC的平台上生成金币和Enemy
+    /// 用于避免在有NPC的平台上生成金币
     /// </summary>
     public bool HasNPC { get; set; }
 
-    /// <summary>
-    /// 唤醒方法 - 对象创建时调用（在Start之前）
-    /// 职责：获取渲染器组件引用
-    /// </summary>
     void Awake()
     {
-        // 获取挂载此脚本的GameObject上的Renderer组件
-        // Renderer用于访问和修改材质
         platformRenderer = GetComponent<Renderer>();
+        platformCollider = GetComponent<Collider>();
     }
 
-    /// <summary>
-    /// 重置平台 - 回收金币/Enemy并随机切换材质
-    /// 在对象从池中取出重用时调用
-    /// 确保平台每次使用都是干净的状态
-    /// </summary>
     public void ResetPlatform()
     {
-        // 调试日志
-        if (debugMode) Debug.Log($"Platform.ResetPlatform: {name}, 金币: {currentCoin}, Enemy: {currentEnemy}");
+        if (debugMode) Debug.Log($"Platform.ResetPlatform: {name}, 金币: {currentCoin}");
 
-        // 回收当前金币（如果有）
         RecycleCoin();
 
-        // 回收当前Enemy（如果有）
-        RecycleEnemy();
-
-        // 重置Enemy和NPC标记
-        HasEnemy = false;
         HasNPC = false;
 
-        // 随机切换材质
-        RandomizeMaterial();
+        temporaryTimer = 0f;
+        damageTimer = 0f;
+        isPlayerOnTemporary = false;
+        platformCollider.enabled = true;
+
+        SetPlatformType(PlatformType.Normal);
     }
 
-    /// <summary>
-    /// 随机切换材质 - 从材质列表中随机选择一个应用
-    /// 如果没有设置材质或列表为空，则不执行
-    /// </summary>
-    void RandomizeMaterial()
+    public void SetPlatformType(PlatformType type)
     {
-        // 检查渲染器和材质列表是否有效
-        if (platformRenderer != null && materials != null && materials.Length > 0)
-        {
-            // 生成随机索引
-            // Random.Range(min, max) 返回[min, max)范围内的整数
-            // 对于整数参数，max是不包含的
-            int randomIndex = Random.Range(0, materials.Length);
+        currentType = type;
 
-            // 应用随机材质
-            platformRenderer.material = materials[randomIndex];
+        switch (type)
+        {
+            case PlatformType.Normal:
+                SetMaterial(normalMaterial);
+                ResetPhysicMaterial();
+                break;
+            case PlatformType.Damage:
+                SetMaterial(damageMaterial);
+                ResetPhysicMaterial();
+                break;
+            case PlatformType.Temporary:
+                SetMaterial(temporaryMaterial);
+                ResetPhysicMaterial();
+                temporaryTimer = temporaryDuration;
+                isPlayerOnTemporary = false;
+                break;
+            case PlatformType.Slippery:
+                SetMaterial(slipperyMaterial);
+                SetPhysicMaterial(slipperyPhysicMaterial);
+                break;
+        }
+    }
+
+    private void SetMaterial(Material material)
+    {
+        if (platformRenderer != null && material != null)
+        {
+            platformRenderer.material = material;
+        }
+    }
+
+    private void SetPhysicMaterial(PhysicMaterial physicMaterial)
+    {
+        if (platformCollider != null && physicMaterial != null)
+        {
+            platformCollider.material = physicMaterial;
+        }
+    }
+
+    private void ResetPhysicMaterial()
+    {
+        if (platformCollider != null)
+        {
+            platformCollider.material = null;
+        }
+    }
+
+    void Update()
+    {
+        wasPlayerOnPlatform = isPlayerOnPlatform;
+        isPlayerOnPlatform = IsPlayerOnPlatform();
+
+        if (isPlayerOnPlatform && !wasPlayerOnPlatform)
+        {
+            OnPlayerEnterPlatform();
+        }
+
+        if (!isPlayerOnPlatform && wasPlayerOnPlatform)
+        {
+            OnPlayerExitPlatform();
+        }
+
+        if (currentType == PlatformType.Temporary && isPlayerOnTemporary)
+        {
+            temporaryTimer -= Time.deltaTime;
+            if (temporaryTimer <= 0f)
+            {
+                platformCollider.enabled = false;
+                platformRenderer.enabled = false;
+            }
+        }
+
+        if (currentType == PlatformType.Damage && isPlayerOnPlatform)
+        {
+            damageTimer += Time.deltaTime;
+            if (damageTimer >= damageInterval)
+            {
+                damageTimer = 0f;
+                ApplyDamageToPlayer();
+            }
+        }
+    }
+
+    bool IsPlayerOnPlatform()
+    {
+        if (playerLayer.value == 0)
+            return false;
+
+        Vector3 center = transform.position + playerCheckOffset;
+
+        Collider[] hitColliders = Physics.OverlapBox(
+            center,
+            playerCheckHalfExtents,
+            transform.rotation,
+            playerLayer
+        );
+
+        return hitColliders.Length > 0;
+    }
+
+    void OnPlayerEnterPlatform()
+    {
+        Debug.Log($"玩家跳上了平台: {name}, 类型: {currentType}");
+
+        if (currentType == PlatformType.Damage)
+        {
+            damageTimer = 0f;
+        }
+        else if (currentType == PlatformType.Temporary)
+        {
+            isPlayerOnTemporary = true;
+        }
+    }
+
+    void ApplyDamageToPlayer()
+    {
+        Collider[] hitColliders = Physics.OverlapBox(
+            transform.position + playerCheckOffset,
+            playerCheckHalfExtents,
+            transform.rotation,
+            playerLayer
+        );
+
+        foreach (var collider in hitColliders)
+        {
+            Health health = collider.GetComponent<Health>();
+            if (health != null)
+            {
+                health.TakeDamage(damageAmount);
+                Debug.Log($"伤害平台 {name} 对玩家造成 {damageAmount} 点伤害");
+                break;
+            }
+        }
+    }
+
+    void OnPlayerExitPlatform()
+    {
+        if (currentType == PlatformType.Temporary)
+        {
+            isPlayerOnTemporary = false;
         }
     }
 
@@ -130,20 +254,6 @@ public class Platform : MonoBehaviour
 
         // 记录金币引用
         currentCoin = coin;
-    }
-
-    /// <summary>
-    /// 设置Enemy - 在平台上放置Enemy
-    /// </summary>
-    /// <param name="enemy">要设置的Enemy GameObject</param>
-    public void SetEnemy(GameObject enemy)
-    {
-        // 调试日志
-        if (debugMode && enemy != null)
-            Debug.Log($"Platform.SetEnemy: {name} 设置Enemy {enemy.name}");
-
-        // 记录Enemy引用
-        currentEnemy = enemy;
     }
 
     /// <summary>
@@ -178,43 +288,13 @@ public class Platform : MonoBehaviour
     }
 
     /// <summary>
-    /// 回收Enemy - 将Enemy归还到对象池
-    /// 如果没有Enemy则跳过
-    /// </summary>
-    public void RecycleEnemy()
-    {
-        // 检查是否有Enemy需要回收
-        if (currentEnemy != null)
-        {
-            // 调试日志
-            if (debugMode)
-                Debug.Log($"Platform.RecycleEnemy: {name} 回收Enemy {currentEnemy.name}");
-
-            // 检查Enemy池是否存在
-            if (EnemyPool.Instance != null)
-            {
-                // 调用Enemy池的回收方法
-                // Enemy池负责将Enemy设为非激活状态并放回队列
-                EnemyPool.Instance.ReturnEnemy(currentEnemy);
-            }
-
-            // 清空引用
-            currentEnemy = null;
-        }
-
-        // 重置Enemy标记
-        HasEnemy = false;
-    }
-
-    /// <summary>
     /// 销毁回调 - 当平台被销毁时调用
-    /// 确保平台销毁时金币和Enemy也被正确回收
+    /// 确保平台销毁时金币也被正确回收
     /// 防止内存泄漏
     /// </summary>
     void OnDestroy()
     {
         // 调用回收方法，确保子对象被正确清理
         RecycleCoin();
-        RecycleEnemy();
     }
 }

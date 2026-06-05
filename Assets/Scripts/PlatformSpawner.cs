@@ -5,7 +5,7 @@ using UnityEngine;
 /// 功能说明：
 /// 1. 根据玩家位置动态生成新平台
 /// 2. 回收玩家身后的旧平台
-/// 3. 在新平台上生成Enemy和金币
+/// 3. 在新平台上生成金币
 /// 4. 围绕圆柱体螺旋上升生成平台
 /// </summary>
 public class PlatformSpawner : MonoBehaviour
@@ -80,6 +80,18 @@ public class PlatformSpawner : MonoBehaviour
     [Tooltip("平台最大深度")]
     public float maxScaleZ = 4f;
 
+    [Tooltip("伤害平台生成概率（0-1）")]
+    [Range(0f, 1f)]
+    public float damagePlatformChance = 0.1f;
+
+    [Tooltip("临时平台生成概率（0-1）")]
+    [Range(0f, 1f)]
+    public float temporaryPlatformChance = 0.1f;
+
+    [Tooltip("滑动平台生成概率（0-1）")]
+    [Range(0f, 1f)]
+    public float slipperyPlatformChance = 0.15f;
+
     /// <summary>
     /// 回收距离 - 玩家身后超过此距离的平台将被回收
     /// 值越大，旧平台保留时间越长
@@ -95,7 +107,7 @@ public class PlatformSpawner : MonoBehaviour
 
     /// <summary>
     /// 平台计数器 - 记录已生成的平台总数
-    /// 用于Enemy生成的间隔判断和螺旋位置计算
+    /// 用于螺旋位置计算
     /// </summary>
     private int platformIndex = 0;
 
@@ -219,21 +231,27 @@ public class PlatformSpawner : MonoBehaviour
 
         if (platform != null)
             {
-                if (debugMode)
-                    Debug.Log($"SpawnPlatform: 生成平台 #{platformIndex} at ({x:F2}, {y:F2}, {z:F2})");
+                // 随机选择平台类型
+                PlatformType platformType = GetRandomPlatformType();
 
-                // 生成Enemy
-                EnemySpawner enemySpawner = FindObjectOfType<EnemySpawner>();
-                if (enemySpawner != null)
+                // 设置平台类型
+                Platform platformComp = platform.GetComponent<Platform>();
+                if (platformComp != null)
                 {
-                    enemySpawner.SpawnEnemyOnPlatform(platform, platformIndex);
+                    platformComp.SetPlatformType(platformType);
                 }
 
-                // 生成金币
-                CoinSpawner coinSpawner = FindObjectOfType<CoinSpawner>();
-                if (coinSpawner != null)
+                if (debugMode)
+                    Debug.Log($"SpawnPlatform: 生成平台 #{platformIndex} ({platformType}) at ({x:F2}, {y:F2}, {z:F2})");
+
+                // 生成金币（不在特殊平台上生成）
+                if (platformType == PlatformType.Normal)
                 {
-                    coinSpawner.SpawnCoinsOnNewPlatform(platform);
+                    CoinSpawner coinSpawner = FindObjectOfType<CoinSpawner>();
+                    if (coinSpawner != null)
+                    {
+                        coinSpawner.SpawnCoinsOnNewPlatform(platform);
+                    }
                 }
 
                 // 平台计数器递增
@@ -273,5 +291,29 @@ public class PlatformSpawner : MonoBehaviour
                 }
             }
         }
+    }
+
+    PlatformType GetRandomPlatformType()
+    {
+        float random = Random.value;
+
+        if (random < damagePlatformChance)
+        {
+            return PlatformType.Damage;
+        }
+        random -= damagePlatformChance;
+
+        if (random < temporaryPlatformChance)
+        {
+            return PlatformType.Temporary;
+        }
+        random -= temporaryPlatformChance;
+
+        if (random < slipperyPlatformChance)
+        {
+            return PlatformType.Slippery;
+        }
+
+        return PlatformType.Normal;
     }
 }
