@@ -88,10 +88,6 @@ public class PlatformSpawner : MonoBehaviour
     [Range(0f, 1f)]
     public float temporaryPlatformChance = 0.1f;
 
-    [Tooltip("滑动平台生成概率（0-1）")]
-    [Range(0f, 1f)]
-    public float slipperyPlatformChance = 0.15f;
-
     /// <summary>
     /// 回收距离 - 玩家身后超过此距离的平台将被回收
     /// 值越大，旧平台保留时间越长
@@ -306,12 +302,6 @@ public class PlatformSpawner : MonoBehaviour
         if (random < temporaryPlatformChance)
         {
             return PlatformType.Temporary;
-        }
-        random -= temporaryPlatformChance;
-
-        if (random < slipperyPlatformChance)
-        {
-            return PlatformType.Slippery;
         }
 
         return PlatformType.Normal;

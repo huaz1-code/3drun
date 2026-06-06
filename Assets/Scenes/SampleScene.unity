@@ -497,17 +497,10 @@ MonoBehaviour:
   normalMaterial: {fileID: 0}
   damageMaterial: {fileID: 2100000, guid: c99ef66dc44fdf7468da716d26225f56, type: 2}
   temporaryMaterial: {fileID: 2100000, guid: b3a7894043100b944b708ea0fec7d15e, type: 2}
-  slipperyMaterial: {fileID: 0}
-  slipperyPhysicMaterial: {fileID: 0}
   damageAmount: 1
   damageInterval: 0.2
   temporaryDuration: 2
   debugMode: 0
-  playerCheckHalfExtents: {x: 0.5, y: 0.1, z: 0.5}
-  playerCheckOffset: {x: 0, y: 0.5, z: 0}
-  playerLayer:
-    serializedVersion: 2
-    m_Bits: 8
 --- !u!65 &173881659
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1343,7 +1336,6 @@ MonoBehaviour:
   maxScaleZ: 4
   damagePlatformChance: 0.395
   temporaryPlatformChance: 0.4
-  slipperyPlatformChance: 0.103
   recycleDistance: 15
   debugMode: 1
 --- !u!4 &455836333
@@ -6264,7 +6256,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1282363505674282779, guid: 4ccf8e8afe1a7704b91f7024b969da26, type: 3}
       propertyPath: m_Layer
-      value: 3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1282363505674282779, guid: 4ccf8e8afe1a7704b91f7024b969da26, type: 3}
       propertyPath: m_IsActive

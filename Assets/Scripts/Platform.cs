@@ -4,8 +4,7 @@ public enum PlatformType
 {
     Normal,
     Damage,
-    Temporary,
-    Slippery
+    Temporary
 }
 
 public class Platform : MonoBehaviour
@@ -19,12 +18,6 @@ public class Platform : MonoBehaviour
     [Tooltip("临时平台材质（半透明）")]
     public Material temporaryMaterial;
 
-    [Tooltip("滑动平台材质（光滑）")]
-    public Material slipperyMaterial;
-
-    [Tooltip("滑动平台物理材质")]
-    public PhysicMaterial slipperyPhysicMaterial;
-
     [Tooltip("伤害平台每次伤害值")]
     public int damageAmount = 1;
 
@@ -37,21 +30,15 @@ public class Platform : MonoBehaviour
     [Tooltip("调试模式")]
     public bool debugMode = false;
 
-    [Tooltip("玩家检测盒子半尺寸")]
-    public Vector3 playerCheckHalfExtents = new Vector3(0.5f, 0.1f, 0.5f);
-
-    [Tooltip("玩家检测偏移（向上偏移检测玩家）")]
-    public Vector3 playerCheckOffset = new Vector3(0, 0.5f, 0);
-
-    [Tooltip("玩家层")]
-    public LayerMask playerLayer;
+    private PlayerJump playerJump;
+    private GameObject player;
 
     private Renderer platformRenderer;
     private Collider platformCollider;
     private PlatformType currentType;
     private float temporaryTimer;
     private float damageTimer;
-    private bool isPlayerOnTemporary;
+    private bool hasStartedCountdown;
     private bool wasPlayerOnPlatform;
     private bool isPlayerOnPlatform;
 
@@ -67,6 +54,11 @@ public class Platform : MonoBehaviour
     {
         platformRenderer = GetComponent<Renderer>();
         platformCollider = GetComponent<Collider>();
+        player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            playerJump = player.GetComponent<PlayerJump>();
+        }
     }
 
     public void ResetPlatform()
@@ -79,8 +71,9 @@ public class Platform : MonoBehaviour
 
         temporaryTimer = 0f;
         damageTimer = 0f;
-        isPlayerOnTemporary = false;
+        hasStartedCountdown = false;
         platformCollider.enabled = true;
+        platformRenderer.enabled = true;
 
         SetPlatformType(PlatformType.Normal);
     }
@@ -103,11 +96,7 @@ public class Platform : MonoBehaviour
                 SetMaterial(temporaryMaterial);
                 ResetPhysicMaterial();
                 temporaryTimer = temporaryDuration;
-                isPlayerOnTemporary = false;
-                break;
-            case PlatformType.Slippery:
-                SetMaterial(slipperyMaterial);
-                SetPhysicMaterial(slipperyPhysicMaterial);
+                hasStartedCountdown = false;
                 break;
         }
     }
@@ -151,13 +140,14 @@ public class Platform : MonoBehaviour
             OnPlayerExitPlatform();
         }
 
-        if (currentType == PlatformType.Temporary && isPlayerOnTemporary)
+        if (currentType == PlatformType.Temporary && hasStartedCountdown)
         {
             temporaryTimer -= Time.deltaTime;
             if (temporaryTimer <= 0f)
             {
-                platformCollider.enabled = false;
-                platformRenderer.enabled = false;
+                RecycleCoin();
+                PlatformPool.Instance.ReturnPlatform(gameObject);
+                Debug.Log($"临时平台 {name} 已自动回收");
             }
         }
 
@@ -174,19 +164,27 @@ public class Platform : MonoBehaviour
 
     bool IsPlayerOnPlatform()
     {
-        if (playerLayer.value == 0)
+        if (playerJump == null || player == null || playerJump.groundLayer.value == 0)
             return false;
 
-        Vector3 center = transform.position + playerCheckOffset;
+        Vector3 center = player.transform.position + playerJump.groundCheckOffset;
 
         Collider[] hitColliders = Physics.OverlapBox(
             center,
-            playerCheckHalfExtents,
-            transform.rotation,
-            playerLayer
+            playerJump.groundCheckHalfExtents,
+            player.transform.rotation,
+            playerJump.groundLayer
         );
 
-        return hitColliders.Length > 0;
+        foreach (var collider in hitColliders)
+        {
+            if (collider.gameObject == gameObject)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     void OnPlayerEnterPlatform()
@@ -197,39 +195,29 @@ public class Platform : MonoBehaviour
         {
             damageTimer = 0f;
         }
-        else if (currentType == PlatformType.Temporary)
+        else if (currentType == PlatformType.Temporary && !hasStartedCountdown)
         {
-            isPlayerOnTemporary = true;
+            hasStartedCountdown = true;
+            temporaryTimer = temporaryDuration;
+            Debug.Log($"临时平台 {name} 开始倒计时: {temporaryDuration}秒");
         }
     }
 
     void ApplyDamageToPlayer()
     {
-        Collider[] hitColliders = Physics.OverlapBox(
-            transform.position + playerCheckOffset,
-            playerCheckHalfExtents,
-            transform.rotation,
-            playerLayer
-        );
+        if (playerJump == null || player == null)
+            return;
 
-        foreach (var collider in hitColliders)
+        Health health = player.GetComponent<Health>();
+        if (health != null)
         {
-            Health health = collider.GetComponent<Health>();
-            if (health != null)
-            {
-                health.TakeDamage(damageAmount);
-                Debug.Log($"伤害平台 {name} 对玩家造成 {damageAmount} 点伤害");
-                break;
-            }
+            health.TakeDamage(damageAmount);
+            Debug.Log($"伤害平台 {name} 对玩家造成 {damageAmount} 点伤害");
         }
     }
 
     void OnPlayerExitPlatform()
     {
-        if (currentType == PlatformType.Temporary)
-        {
-            isPlayerOnTemporary = false;
-        }
     }
 
     /// <summary>
