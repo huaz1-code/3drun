@@ -2614,7 +2614,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 750, y: -100}
+  m_AnchoredPosition: {x: 300, y: -100}
   m_SizeDelta: {x: 400, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &900042608
@@ -3689,6 +3689,22 @@ MonoBehaviour:
   allowOverheal: 0
   pauseOnDeath: 1
   deathPauseDelay: 1
+--- !u!114 &1176316437
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1176316427}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f67b71b9299fee0418313f8ce792fdae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  healthPotionHealAmount: 50
+  speedPotionBonusPercent: 0.5
+  speedDuration: 5
+  shieldDuration: 10
 --- !u!1 &1197266363
 GameObject:
   m_ObjectHideFlags: 0
@@ -5230,7 +5246,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 300, y: -100}
+  m_AnchoredPosition: {x: 750, y: -100}
   m_SizeDelta: {x: 400, y: 500}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1728080315
@@ -6467,6 +6483,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1282363505674282779, guid: 4ccf8e8afe1a7704b91f7024b969da26, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1176316436}
+    - targetCorrespondingSourceObject: {fileID: 1282363505674282779, guid: 4ccf8e8afe1a7704b91f7024b969da26, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1176316437}
   m_SourcePrefab: {fileID: 100100000, guid: 4ccf8e8afe1a7704b91f7024b969da26, type: 3}
 --- !u!1001 &7167613646647424364
 PrefabInstance:

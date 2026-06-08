@@ -211,6 +211,14 @@ public class Platform : MonoBehaviour
         Health health = player.GetComponent<Health>();
         if (health != null)
         {
+            // 检查护盾
+            PotionEffects potionEffects = health.GetComponent<PotionEffects>();
+            if (potionEffects != null && potionEffects.CheckAndConsumeShield())
+            {
+                Debug.Log($"伤害平台 {name} 的伤害被护盾抵挡！");
+                return;
+            }
+
             health.TakeDamage(damageAmount);
             Debug.Log($"伤害平台 {name} 对玩家造成 {damageAmount} 点伤害");
         }

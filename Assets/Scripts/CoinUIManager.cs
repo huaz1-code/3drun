@@ -48,15 +48,20 @@ public class CoinUIManager : MonoBehaviour
 
     private void RefreshCounterTextReference()
     {
-        if (counterText == null)
+        counterText = null;
+        
+        TextMeshProUGUI[] allTexts = FindObjectsOfType<TextMeshProUGUI>();
+        foreach (var text in allTexts)
         {
-            TextMeshProUGUI foundText = FindObjectOfType<TextMeshProUGUI>();
-            if (foundText != null && foundText.name == "Counter")
+            if (text.name == "Counter")
             {
-                counterText = foundText;
+                counterText = text;
                 Debug.Log("CoinUIManager: 自动找到Counter文本组件");
+                return;
             }
         }
+        
+        Debug.LogWarning("CoinUIManager: 未找到名为'Counter'的TextMeshProUGUI组件");
     }
 
     public static void AddCoin()

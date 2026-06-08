@@ -51,8 +51,18 @@ public class BossAttack : MonoBehaviour
         if (isOnCooldown) return;
         if (playerHealth == null || playerHealth.IsDead()) return;
 
-        playerHealth.TakeDamage(attackDamage);
+        // 开始攻击冷却（无论是否被抵挡）
         StartCoroutine(AttackCooldownCoroutine());
+
+        // 检查护盾
+        PotionEffects potionEffects = playerHealth.GetComponent<PotionEffects>();
+        if (potionEffects != null && potionEffects.CheckAndConsumeShield())
+        {
+            // 伤害被护盾抵挡，不造成伤害
+            return;
+        }
+
+        playerHealth.TakeDamage(attackDamage);
     }
 
     private IEnumerator AttackCooldownCoroutine()

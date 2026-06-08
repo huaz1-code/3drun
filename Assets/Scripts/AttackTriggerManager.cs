@@ -332,6 +332,14 @@ public class AttackTriggerManager : MonoBehaviour
         Health health = hitCollider.GetComponent<Health>();
         if (health != null)
         {
+            // 检查护盾
+            PotionEffects potionEffects = health.GetComponent<PotionEffects>();
+            if (potionEffects != null && potionEffects.CheckAndConsumeShield())
+            {
+                Debug.Log(targetName + " 碰到连线的伤害被护盾抵挡！");
+                return;
+            }
+
             health.TakeDamage(lineDamage);
             Debug.Log(targetName + " 碰到连线，受到 " + lineDamage + " 点伤害");
         }
