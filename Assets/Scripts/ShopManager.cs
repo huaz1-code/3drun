@@ -1,40 +1,68 @@
 using UnityEngine;
+using TMPro;
 
 public class ShopManager : MonoBehaviour
 {
+    [Tooltip("NeedCounter文本组件")]
+    public TextMeshProUGUI needCounterText;
+
+    private int needCounter = 1;
+
+    private void Start()
+    {
+        UpdateNeedCounterText();
+    }
+
     public void OnBuyHealthPotion()
     {
-        if (PotionInventory.Instance != null)
+        if (CoinUIManager.SubtractCoins(needCounter))
         {
-            PotionInventory.Instance.AddHealthPotion();
+            PotionInventory.Instance?.AddHealthPotion();
+            DoubleNeedCounter();
         }
         else
         {
-            Debug.LogWarning("PotionInventory 未找到！请确保场景中存在 PotionInventory 组件。");
+            Debug.Log("金币不足！");
         }
     }
 
     public void OnBuyShieldPotion()
     {
-        if (PotionInventory.Instance != null)
+        if (CoinUIManager.SubtractCoins(needCounter))
         {
-            PotionInventory.Instance.AddShieldPotion();
+            PotionInventory.Instance?.AddShieldPotion();
+            DoubleNeedCounter();
         }
         else
         {
-            Debug.LogWarning("PotionInventory 未找到！请确保场景中存在 PotionInventory 组件。");
+            Debug.Log("金币不足！");
         }
     }
 
     public void OnBuySpeedPotion()
     {
-        if (PotionInventory.Instance != null)
+        if (CoinUIManager.SubtractCoins(needCounter))
         {
-            PotionInventory.Instance.AddSpeedPotion();
+            PotionInventory.Instance?.AddSpeedPotion();
+            DoubleNeedCounter();
         }
         else
         {
-            Debug.LogWarning("PotionInventory 未找到！请确保场景中存在 PotionInventory 组件。");
+            Debug.Log("金币不足！");
+        }
+    }
+
+    private void DoubleNeedCounter()
+    {
+        needCounter *= 2;
+        UpdateNeedCounterText();
+    }
+
+    private void UpdateNeedCounterText()
+    {
+        if (needCounterText != null)
+        {
+            needCounterText.text = needCounter.ToString();
         }
     }
 }

@@ -109,4 +109,24 @@ public class CoinUIManager : MonoBehaviour
     {
         return Instance != null ? Instance.coinCount : 0;
     }
+
+    public static bool SubtractCoins(int amount)
+    {
+        if (Instance != null)
+        {
+            if (Instance.coinCount >= amount)
+            {
+                Instance.coinCount -= amount;
+                Instance.UpdateCounterText();
+                Debug.Log($"金币-{amount}，总数: {Instance.coinCount}");
+                return true;
+            }
+            else
+            {
+                Debug.Log("金币不足！");
+                return false;
+            }
+        }
+        return false;
+    }
 }
