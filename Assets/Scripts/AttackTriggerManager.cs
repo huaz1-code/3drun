@@ -76,29 +76,35 @@ public class AttackTriggerManager : MonoBehaviour
     private float lastHitTime;
 
     /// <summary>
+    /// 伤害冷却字典：key为"targetName_lineIndex"，value为上次受伤时间
+    /// 用于实现不同连线可以独立造成伤害
+    /// </summary>
+    private Dictionary<string, float> lineDamageCooldowns = new Dictionary<string, float>();
+
+    /// <summary>
     /// 所有已激活的触发器列表
     /// </summary>
     private List<AttackTrigger> activatedTriggers = new List<AttackTrigger>();
 
     /// <summary>
-    /// 用于绘制连线的LineRenderer
+    /// 用于绘制多条连线的LineRenderer列表
     /// </summary>
-    private LineRenderer lineRenderer;
+    private List<LineRenderer> lineRenderers = new List<LineRenderer>();
 
     /// <summary>
-    /// 用于碰撞检测的对象
+    /// 用于碰撞检测的对象列表（每条连线一个）
     /// </summary>
-    private GameObject collisionObject;
-
-    /// <summary>
-    /// 碰撞检测的SphereCollider
-    /// </summary>
-    private SphereCollider[] sphereColliders;
+    private List<GameObject> collisionObjects = new List<GameObject>();
 
     /// <summary>
     /// 当前正在运行的延时协程
     /// </summary>
     private Coroutine delayCoroutine;
+
+    /// <summary>
+    /// 已显示的连线数量（用于追踪已完成的配对）
+    /// </summary>
+    private int displayedLineCount = 0;
 
     void Awake()
     {
@@ -116,47 +122,64 @@ public class AttackTriggerManager : MonoBehaviour
 
     void Start()
     {
-        // 创建LineRenderer组件
-        lineRenderer = gameObject.AddComponent<LineRenderer>();
-        lineRenderer.material = lineMaterial;
-        lineRenderer.startWidth = lineWidth;
-        lineRenderer.endWidth = lineWidth;
-        lineRenderer.startColor = lineColor;
-        lineRenderer.endColor = lineColor;
-        lineRenderer.positionCount = 0;
-        lineRenderer.enabled = false;
+        // 初始化连线系统（不需要预先创建LineRenderer，会按需创建）
+    }
 
-        // 创建碰撞检测对象
-        CreateCollisionObject();
+    /// <summary>
+    /// 创建一个新的LineRenderer（创建独立的GameObject）
+    /// </summary>
+    private LineRenderer CreateLineRenderer()
+    {
+        // 创建独立的GameObject来承载LineRenderer
+        GameObject lineObj = new GameObject("AttackLine");
+        lineObj.transform.SetParent(transform);
+        
+        LineRenderer lr = lineObj.AddComponent<LineRenderer>();
+        lr.material = lineMaterial;
+        lr.startWidth = lineWidth;
+        lr.endWidth = lineWidth;
+        lr.startColor = lineColor;
+        lr.endColor = lineColor;
+        lr.positionCount = 0;
+        lr.enabled = false;
+        return lr;
     }
 
     /// <summary>
     /// 创建碰撞检测对象
     /// </summary>
-    void CreateCollisionObject()
+    private GameObject CreateCollisionObject(int lineIndex)
     {
-        collisionObject = new GameObject("AttackLineCollision");
-        collisionObject.transform.SetParent(transform);
+        GameObject collisionObj = new GameObject($"AttackLineCollision_{lineIndex}");
+        collisionObj.transform.SetParent(transform);
+        return collisionObj;
     }
 
     /// <summary>
-    /// 更新碰撞检测
+    /// 更新所有连线的碰撞检测
     /// </summary>
-    void UpdateCollision()
+    void UpdateAllCollisions()
     {
         // 先清除旧的碰撞检测
-        ClearCollision();
+        ClearAllCollisions();
 
-        if (activatedTriggers.Count >= 2)
+        int lineCount = activatedTriggers.Count / 2;
+        
+        for (int lineIndex = 0; lineIndex < lineCount; lineIndex++)
         {
-            // 在连线上创建多个SphereCollider进行碰撞检测
-            Vector3 start = activatedTriggers[0].GetLinePosition();
-            Vector3 end = activatedTriggers[1].GetLinePosition();
+            AttackTrigger trigger1 = activatedTriggers[lineIndex * 2];
+            AttackTrigger trigger2 = activatedTriggers[lineIndex * 2 + 1];
+            
+            Vector3 start = trigger1.GetLinePosition();
+            Vector3 end = trigger2.GetLinePosition();
             float distance = Vector3.Distance(start, end);
+            
+            // 创建碰撞检测对象
+            GameObject collisionObj = CreateCollisionObject(lineIndex);
+            collisionObjects.Add(collisionObj);
             
             // 计算需要多少个碰撞检测点（每隔0.5米一个）
             int colliderCount = Mathf.Max(2, Mathf.CeilToInt(distance / 0.5f));
-            sphereColliders = new SphereCollider[colliderCount];
 
             for (int i = 0; i < colliderCount; i++)
             {
@@ -164,35 +187,78 @@ public class AttackTriggerManager : MonoBehaviour
                 Vector3 position = Vector3.Lerp(start, end, t);
 
                 GameObject colliderObj = new GameObject($"Collider_{i}");
-                colliderObj.transform.SetParent(collisionObject.transform);
+                colliderObj.transform.SetParent(collisionObj.transform);
                 colliderObj.transform.position = position;
 
                 SphereCollider collider = colliderObj.AddComponent<SphereCollider>();
                 collider.isTrigger = true;
                 collider.radius = collisionRadius;
 
-                sphereColliders[i] = collider;
-
                 // 添加碰撞检测脚本
                 LineCollisionDetector detector = colliderObj.AddComponent<LineCollisionDetector>();
                 detector.manager = this;
+                detector.lineIndex = lineIndex; // 设置连线索引
             }
         }
     }
 
     /// <summary>
-    /// 清除碰撞检测
+    /// 更新指定连线的碰撞检测位置
     /// </summary>
-    void ClearCollision()
+    void UpdateCollisionPositions(int lineIndex)
     {
-        if (collisionObject != null)
+        // 检查索引是否有效
+        if (lineIndex >= collisionObjects.Count || lineIndex >= activatedTriggers.Count / 2)
+            return;
+            
+        int triggerIndex1 = lineIndex * 2;
+        int triggerIndex2 = lineIndex * 2 + 1;
+        
+        // 检查触发器是否存在
+        if (triggerIndex2 >= activatedTriggers.Count)
+            return;
+            
+        AttackTrigger trigger1 = activatedTriggers[triggerIndex1];
+        AttackTrigger trigger2 = activatedTriggers[triggerIndex2];
+        
+        if (trigger1 == null || trigger2 == null)
+            return;
+            
+        Vector3 start = trigger1.GetLinePosition();
+        Vector3 end = trigger2.GetLinePosition();
+        
+        GameObject collisionObj = collisionObjects[lineIndex];
+        
+        // 检查碰撞对象是否存在
+        if (collisionObj == null)
+            return;
+            
+        int childCount = collisionObj.transform.childCount;
+        
+        for (int i = 0; i < childCount; i++)
         {
-            foreach (Transform child in collisionObject.transform)
+            Transform child = collisionObj.transform.GetChild(i);
+            if (child != null)
             {
-                Destroy(child.gameObject);
+                float t = (float)i / (childCount - 1);
+                child.position = Vector3.Lerp(start, end, t);
             }
         }
-        sphereColliders = null;
+    }
+
+    /// <summary>
+    /// 清除所有碰撞检测
+    /// </summary>
+    void ClearAllCollisions()
+    {
+        foreach (var collisionObj in collisionObjects)
+        {
+            if (collisionObj != null)
+            {
+                Destroy(collisionObj);
+            }
+        }
+        collisionObjects.Clear();
     }
 
     /// <summary>
@@ -215,94 +281,165 @@ public class AttackTriggerManager : MonoBehaviour
     /// </summary>
     void UpdateLine()
     {
-        if (activatedTriggers.Count >= 2)
+        // 计算需要的连线数量（每两个触发器一条线）
+        int requiredLineCount = activatedTriggers.Count / 2;
+        
+        // 如果当前需要显示的连线数少于已显示的，说明有触发器被重置
+        if (requiredLineCount < displayedLineCount)
         {
-            // 如果有延时，启动延时协程
-            if (lineDelay > 0)
+            // 重新显示所有连线
+            ShowLines();
+            return;
+        }
+        
+        // 计算新增的连线数量
+        int newLineCount = requiredLineCount - displayedLineCount;
+        
+        // 如果有新增的配对
+        if (newLineCount > 0)
+        {
+            // 如果有延时且当前没有正在运行的延时协程，才启动延时
+            if (lineDelay > 0 && delayCoroutine == null)
             {
-                // 如果已有协程在运行，先停止它
-                if (delayCoroutine != null)
-                {
-                    StopCoroutine(delayCoroutine);
-                }
-                
-                // 启动新的延时协程
-                delayCoroutine = StartCoroutine(ShowLineWithDelay());
+                // 启动延时协程
+                delayCoroutine = StartCoroutine(ShowLinesWithDelay());
                 Debug.Log("等待 " + lineDelay + " 秒后显示连线...");
             }
-            else
+            else if (lineDelay == 0)
             {
                 // 无延时，立即显示连线
-                ShowLine();
+                ShowLines();
             }
+            // 如果有延时但已有协程在运行，不打断它，等待当前延时完成
         }
-        else
+        else if (requiredLineCount == 0)
         {
-            // 如果有协程在运行，停止它
+            // 如果没有配对，隐藏所有连线
             if (delayCoroutine != null)
             {
                 StopCoroutine(delayCoroutine);
                 delayCoroutine = null;
             }
             
-            lineRenderer.enabled = false;
-            ClearCollision();
+            HideAllLines();
+            displayedLineCount = 0;
         }
+        // 如果 requiredLineCount > 0 但 newLineCount == 0，说明没有新增配对，保持现状
     }
 
     /// <summary>
     /// 延时显示连线的协程
     /// </summary>
-    IEnumerator ShowLineWithDelay()
+    IEnumerator ShowLinesWithDelay()
     {
         yield return new WaitForSeconds(lineDelay);
         
-        ShowLine();
+        ShowLines();
         delayCoroutine = null;
     }
 
     /// <summary>
-    /// 显示连线
+    /// 显示所有连线
     /// </summary>
-    void ShowLine()
+    void ShowLines()
     {
-        if (activatedTriggers.Count >= 2)
+        // 计算完整配对的数量（每两个触发器形成一条线）
+        int requiredLineCount = activatedTriggers.Count / 2;
+        
+        // 如果没有完整的配对，直接返回
+        if (requiredLineCount < 1)
+            return;
+        
+        // 确保有足够的LineRenderer
+        while (lineRenderers.Count < requiredLineCount)
         {
-            // 在第一个和第二个激活的触发器之间绘制连线
-            lineRenderer.positionCount = 2;
-            lineRenderer.SetPosition(0, activatedTriggers[0].GetLinePosition());
-            lineRenderer.SetPosition(1, activatedTriggers[1].GetLinePosition());
-            lineRenderer.enabled = true;
-            
-            // 更新碰撞检测
-            UpdateCollision();
-            
-            Debug.Log("连线已绘制在 " + activatedTriggers[0].gameObject.name + " 和 " + activatedTriggers[1].gameObject.name + " 之间");
+            LineRenderer lr = CreateLineRenderer();
+            lineRenderers.Add(lr);
         }
+        
+        // 隐藏多余的LineRenderer
+        for (int i = requiredLineCount; i < lineRenderers.Count; i++)
+        {
+            if (lineRenderers[i] != null)
+            {
+                lineRenderers[i].enabled = false;
+            }
+        }
+        
+        // 绘制每条连线
+        for (int i = 0; i < requiredLineCount; i++)
+        {
+            int triggerIndex1 = i * 2;
+            int triggerIndex2 = i * 2 + 1;
+            
+            // 安全检查
+            if (triggerIndex2 >= activatedTriggers.Count)
+                break;
+                
+            AttackTrigger trigger1 = activatedTriggers[triggerIndex1];
+            AttackTrigger trigger2 = activatedTriggers[triggerIndex2];
+            
+            if (trigger1 == null || trigger2 == null)
+                continue;
+                
+            LineRenderer lr = lineRenderers[i];
+            lr.positionCount = 2;
+            lr.SetPosition(0, trigger1.GetLinePosition());
+            lr.SetPosition(1, trigger2.GetLinePosition());
+            lr.enabled = true;
+            
+            Debug.Log($"连线{i + 1}已绘制在 {trigger1.gameObject.name} 和 {trigger2.gameObject.name} 之间");
+        }
+        
+        // 更新碰撞检测
+        UpdateAllCollisions();
+        
+        // 更新已显示连线数量
+        displayedLineCount = requiredLineCount;
+    }
+
+    /// <summary>
+    /// 隐藏所有连线
+    /// </summary>
+    void HideAllLines()
+    {
+        foreach (var lr in lineRenderers)
+        {
+            if (lr != null)
+            {
+                lr.enabled = false;
+            }
+        }
+        ClearAllCollisions();
     }
 
     void Update()
     {
-        // 如果连线启用，持续更新位置（以防触发器移动）
-        if (lineRenderer.enabled && activatedTriggers.Count >= 2)
+        // 如果有连线启用，持续更新位置（以防触发器移动）
+        int lineCount = lineRenderers.Count;
+        
+        for (int i = 0; i < lineCount; i++)
         {
-            lineRenderer.SetPosition(0, activatedTriggers[0].GetLinePosition());
-            lineRenderer.SetPosition(1, activatedTriggers[1].GetLinePosition());
-            
-            // 更新碰撞检测位置
-            if (sphereColliders != null && sphereColliders.Length >= 2)
+            if (lineRenderers[i] != null && lineRenderers[i].enabled)
             {
-                Vector3 start = activatedTriggers[0].GetLinePosition();
-                Vector3 end = activatedTriggers[1].GetLinePosition();
+                int triggerIndex1 = i * 2;
+                int triggerIndex2 = i * 2 + 1;
                 
-                for (int i = 0; i < sphereColliders.Length; i++)
-                {
-                    if (sphereColliders[i] != null)
-                    {
-                        float t = (float)i / (sphereColliders.Length - 1);
-                        sphereColliders[i].transform.position = Vector3.Lerp(start, end, t);
-                    }
-                }
+                // 安全检查：确保触发器索引有效
+                if (triggerIndex2 >= activatedTriggers.Count)
+                    continue;
+                    
+                AttackTrigger trigger1 = activatedTriggers[triggerIndex1];
+                AttackTrigger trigger2 = activatedTriggers[triggerIndex2];
+                
+                if (trigger1 == null || trigger2 == null)
+                    continue;
+                    
+                lineRenderers[i].SetPosition(0, trigger1.GetLinePosition());
+                lineRenderers[i].SetPosition(1, trigger2.GetLinePosition());
+                
+                // 更新碰撞检测位置
+                UpdateCollisionPositions(i);
             }
         }
     }
@@ -311,49 +448,111 @@ public class AttackTriggerManager : MonoBehaviour
     /// 当检测到玩家或Boss碰到连线时调用
     /// </summary>
     /// <param name="hitCollider">碰撞到连线的对象的Collider</param>
-    public void OnLineHit(Collider hitCollider)
+    /// <param name="lineIndex">被碰撞的连线索引（-1表示未知）</param>
+    public void OnLineHit(Collider hitCollider, int lineIndex = -1)
     {
         string targetName = hitCollider.gameObject.name;
         float currentTime = Time.time;
 
-        // 检查是否在冷却时间内
-        if (targetName == lastHitTarget && currentTime - lastHitTime < damageCooldown)
+        // 如果连线索引无效，直接返回
+        if (lineIndex < 0)
+            return;
+
+        // 创建唯一的冷却key（目标名称 + 连线索引）
+        string cooldownKey = targetName + "_" + lineIndex;
+
+        // 检查该目标+该连线的冷却状态
+        if (lineDamageCooldowns.ContainsKey(cooldownKey))
         {
-            // 还在冷却中，不造成伤害
-            Debug.Log(targetName + " 处于伤害冷却中，跳过伤害");
+            if (currentTime - lineDamageCooldowns[cooldownKey] < damageCooldown)
+            {
+                // 还在冷却中，不造成伤害
+                return;
+            }
+        }
+
+        // 更新该目标+该连线的冷却时间
+        lineDamageCooldowns[cooldownKey] = currentTime;
+
+        // 尝试获取Health组件
+        Health health = hitCollider.GetComponent<Health>();
+        if (health == null)
+        {
+            Debug.LogWarning(targetName + " 没有 Health 组件，无法造成伤害");
             return;
         }
 
-        // 更新伤害记录
+        // 检查护盾
+        PotionEffects potionEffects = health.GetComponent<PotionEffects>();
+        if (potionEffects != null && potionEffects.CheckAndConsumeShield())
+        {
+            Debug.Log(targetName + " 碰到连线" + (lineIndex + 1) + "的伤害被护盾抵挡！");
+            return;
+        }
+
+        // 直接对实际碰到线的对象造成伤害
+        health.TakeDamage(lineDamage);
+        Debug.Log(targetName + " 碰到连线" + (lineIndex + 1) + "，受到 " + lineDamage + " 点伤害");
+
+        // 记录目标名称（用于调试）
         lastHitTarget = targetName;
         lastHitTime = currentTime;
-
-        // 尝试获取Health组件并造成伤害
-        Health health = hitCollider.GetComponent<Health>();
-        if (health != null)
-        {
-            // 检查护盾
-            PotionEffects potionEffects = health.GetComponent<PotionEffects>();
-            if (potionEffects != null && potionEffects.CheckAndConsumeShield())
-            {
-                Debug.Log(targetName + " 碰到连线的伤害被护盾抵挡！");
-                return;
-            }
-
-            health.TakeDamage(lineDamage);
-            Debug.Log(targetName + " 碰到连线，受到 " + lineDamage + " 点伤害");
-        }
-        else
-        {
-            Debug.LogWarning(targetName + " 没有 Health 组件，无法造成伤害");
-        }
 
         // 如果设置为碰撞后销毁连线
         if (destroyOnHit)
         {
-            Debug.Log("连线被触碰，重置所有触发器");
-            ResetAllTriggers();
+            // 只重置被碰撞的那一对触发器
+            Debug.Log($"连线{lineIndex + 1}被触碰，重置对应的触发器");
+            ResetTriggerPair(lineIndex);
         }
+    }
+
+    /// <summary>
+    /// 重置指定的一对触发器（只影响这一对，其他触发器不受影响）
+    /// </summary>
+    /// <param name="lineIndex">连线索引（从0开始）</param>
+    public void ResetTriggerPair(int lineIndex)
+    {
+        int triggerIndex1 = lineIndex * 2;
+        int triggerIndex2 = lineIndex * 2 + 1;
+        
+        // 检查索引是否有效
+        if (triggerIndex2 >= activatedTriggers.Count)
+            return;
+            
+        AttackTrigger trigger1 = activatedTriggers[triggerIndex1];
+        AttackTrigger trigger2 = activatedTriggers[triggerIndex2];
+        
+        // 重置这两个触发器
+        if (trigger1 != null)
+        {
+            trigger1.ResetTrigger();
+            Debug.Log($"触发器 {trigger1.gameObject.name} 已重置");
+        }
+        if (trigger2 != null)
+        {
+            trigger2.ResetTrigger();
+            Debug.Log($"触发器 {trigger2.gameObject.name} 已重置");
+        }
+        
+        // 从激活列表中移除这两个触发器
+        activatedTriggers.RemoveAt(triggerIndex2);
+        activatedTriggers.RemoveAt(triggerIndex1);
+        
+        // 隐藏对应的连线
+        if (lineIndex < lineRenderers.Count && lineRenderers[lineIndex] != null)
+        {
+            lineRenderers[lineIndex].enabled = false;
+        }
+        
+        // 更新已显示连线数量
+        displayedLineCount = activatedTriggers.Count / 2;
+        
+        // 更新碰撞检测
+        UpdateAllCollisions();
+        
+        // 重新显示剩余的连线
+        ShowLines();
     }
 
     /// <summary>
@@ -370,13 +569,47 @@ public class AttackTriggerManager : MonoBehaviour
         
         foreach (var trigger in activatedTriggers)
         {
-            trigger.ResetTrigger();
+            if (trigger != null)
+            {
+                trigger.ResetTrigger();
+            }
         }
         activatedTriggers.Clear();
-        lineRenderer.enabled = false;
-        lineRenderer.positionCount = 0;
-        ClearCollision();
+        
+        // 隐藏所有连线
+        HideAllLines();
+        
+        // 重置已显示连线数量
+        displayedLineCount = 0;
+        
+        // 清空冷却记录
+        lineDamageCooldowns.Clear();
+        
         Debug.Log("所有触发器已重置");
+    }
+
+    /// <summary>
+    /// 清理所有动态创建的对象
+    /// </summary>
+    void CleanupLineRenderers()
+    {
+        foreach (var lr in lineRenderers)
+        {
+            if (lr != null)
+            {
+                Destroy(lr.gameObject);
+            }
+        }
+        lineRenderers.Clear();
+    }
+
+    /// <summary>
+    /// 销毁时清理资源
+    /// </summary>
+    void OnDestroy()
+    {
+        CleanupLineRenderers();
+        ClearAllCollisions();
     }
 
     /// <summary>
@@ -394,6 +627,11 @@ public class AttackTriggerManager : MonoBehaviour
 public class LineCollisionDetector : MonoBehaviour
 {
     public AttackTriggerManager manager;
+    
+    /// <summary>
+    /// 所属的连线索引
+    /// </summary>
+    public int lineIndex;
 
     void OnTriggerEnter(Collider other)
     {
@@ -402,7 +640,7 @@ public class LineCollisionDetector : MonoBehaviour
         {
             if (manager != null)
             {
-                manager.OnLineHit(other);
+                manager.OnLineHit(other, lineIndex);
             }
         }
     }

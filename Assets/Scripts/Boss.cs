@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class Boss : MonoBehaviour
 {
@@ -14,9 +15,27 @@ public class Boss : MonoBehaviour
     [Tooltip("死亡后是否销毁Boss对象")]
     public bool destroyOnDeath = true;
 
+    [Tooltip("移动持续时间（秒）")]
+    public float moveDuration = 2f;
+
+    [Tooltip("技能释放持续时间（秒）")]
+    public float attackDuration = 1f;
+
+    [Tooltip("圆形波伤害")]
+    public float waveDamage = 15f;
+
+    [Tooltip("圆形波半径")]
+    public float waveRadius = 10f;
+
+    [Tooltip("圆形波扩散速度")]
+    public float waveSpeed = 3f;
+
+    
+
     private Transform player;
     private Rigidbody rb;
     private Health health;
+    private bool isAttacking = false;
 
     void Start()
     {
@@ -46,7 +65,7 @@ public class Boss : MonoBehaviour
 
     void Update()
     {
-        if (isChasing && player != null)
+        if (isChasing && !isAttacking && player != null)
         {
             UpdateRotation();
         }
@@ -54,7 +73,7 @@ public class Boss : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (isChasing && player != null)
+        if (isChasing && !isAttacking && player != null)
         {
             ChasePlayer();
         }
@@ -65,12 +84,52 @@ public class Boss : MonoBehaviour
         isChasing = true;
         FindPlayer();
         Debug.Log("Boss开始追踪玩家！");
+        StartCoroutine(AttackLoopCoroutine());
     }
 
     public void StopChasing()
     {
         isChasing = false;
         Debug.Log("Boss停止追踪玩家");
+    }
+
+    private IEnumerator AttackLoopCoroutine()
+    {
+        while (isChasing && !health.IsDead())
+        {
+            yield return new WaitForSeconds(moveDuration);
+            
+            if (!isChasing || health.IsDead()) break;
+            
+            // 检查血量是否低于50%
+            float healthPercent = health.GetHealthPercent();
+            
+            if (healthPercent <= 0.5f)
+            {
+                // 血量低于50%，不释放攻击波，继续移动
+                Debug.Log("Boss血量低于50%，进入狂暴模式！");
+                continue;
+            }
+            
+            isAttacking = true;
+            Debug.Log("Boss开始释放技能！");
+            rb.velocity = Vector3.zero;
+            
+            ReleaseWave();
+            
+            yield return new WaitForSeconds(attackDuration);
+            
+            isAttacking = false;
+            Debug.Log("Boss继续移动！");
+        }
+    }
+
+    private void ReleaseWave()
+    {
+        GameObject wave = new GameObject("BossWave");
+        wave.transform.position = transform.position;
+        BossWave bossWave = wave.AddComponent<BossWave>();
+        bossWave.Initialize(waveDamage, waveRadius, waveSpeed);
     }
 
     private void FindPlayer()

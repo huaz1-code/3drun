@@ -53,6 +53,22 @@ public class PlayerController : MonoBehaviour
     public float decelerationFactor = 0.5f;
 
     /// <summary>
+    /// 当前速度倍率（用于减速场效果）
+    /// </summary>
+    private float currentSpeedMultiplier = 1f;
+
+    /// <summary>
+    /// 是否处于无敌状态
+    /// </summary>
+    private bool isInvincible = false;
+
+    /// <summary>
+    /// 无敌时间（秒）
+    /// </summary>
+    [Tooltip("无敌时间（秒）")]
+    public float invincibilityDuration = 3f;
+
+    /// <summary>
     /// 摄像机引用 - 用于计算相对移动方向
     /// 玩家移动方向基于摄像机朝向
     /// </summary>
@@ -92,6 +108,10 @@ public class PlayerController : MonoBehaviour
         if (health == null)
         {
             Debug.LogWarning("PlayerController: 未找到 Health 组件，请确保玩家对象上挂载了 Health.cs");
+        }
+        else
+        {
+            health.OnTakeDamage += OnPlayerTakeDamage;
         }
     }
 
@@ -175,7 +195,8 @@ public class PlayerController : MonoBehaviour
         {
             // 归一化方向向量并乘以最大速度得到目标速度
             // normalized确保方向正确，moveSpeed控制速度大小
-            targetVelocity = direction.normalized * moveSpeed;
+            // currentSpeedMultiplier用于减速场效果
+            targetVelocity = direction.normalized * moveSpeed * currentSpeedMultiplier;
         }
 
         // 使用平滑速度变化计算新速度
@@ -341,4 +362,53 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 设置速度倍率（用于减速场效果）
+    /// </summary>
+    /// <param name="factor">速度倍率（0-1）</param>
+    public void SetSlowFactor(float factor)
+    {
+        if (isInvincible) return;
+        currentSpeedMultiplier = Mathf.Clamp(factor, 0f, 1f);
     }
+
+    /// <summary>
+    /// 玩家受到伤害时触发
+    /// </summary>
+    private void OnPlayerTakeDamage(float damage, float currentHealth, float maxHealth)
+    {
+        EnterInvincibility();
+    }
+
+    /// <summary>
+    /// 进入无敌状态
+    /// </summary>
+    public void EnterInvincibility()
+    {
+        if (isInvincible) return;
+
+        isInvincible = true;
+        currentSpeedMultiplier = 1f;
+        Debug.Log("玩家进入无敌状态！");
+        StartCoroutine(InvincibilityCoroutine());
+    }
+
+    /// <summary>
+    /// 检查是否处于无敌状态
+    /// </summary>
+    /// <returns>true表示无敌，false表示非无敌</returns>
+    public bool IsInvincible()
+    {
+        return isInvincible;
+    }
+
+    /// <summary>
+    /// 无敌状态协程
+    /// </summary>
+    private IEnumerator InvincibilityCoroutine()
+    {
+        yield return new WaitForSeconds(invincibilityDuration);
+        isInvincible = false;
+        Debug.Log("玩家无敌状态结束！");
+    }
+}

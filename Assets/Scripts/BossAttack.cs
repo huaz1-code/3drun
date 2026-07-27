@@ -1,23 +1,17 @@
 using UnityEngine;
-using System.Collections;
 
 public class BossAttack : MonoBehaviour
 {
     [Tooltip("Boss攻击伤害值")]
     public float attackDamage = 20f;
 
-    [Tooltip("攻击冷却时间（秒）")]
-    public float attackCooldown = 2f;
-
-    private bool isOnCooldown = false;
-    private Health playerHealth;
-
     void OnCollisionEnter(Collision collision)
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            playerHealth = collision.gameObject.GetComponent<Health>();
-            TryAttack();
+            Health playerHealth = collision.gameObject.GetComponent<Health>();
+            PlayerController playerController = collision.gameObject.GetComponent<PlayerController>();
+            ApplyDamage(playerHealth, playerController);
         }
     }
 
@@ -25,50 +19,24 @@ public class BossAttack : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            TryAttack();
+            Health playerHealth = collision.gameObject.GetComponent<Health>();
+            PlayerController playerController = collision.gameObject.GetComponent<PlayerController>();
+            ApplyDamage(playerHealth, playerController);
         }
     }
 
-    void OnTriggerEnter(Collider other)
+    private void ApplyDamage(Health playerHealth, PlayerController playerController)
     {
-        if (other.gameObject.CompareTag("Player"))
-        {
-            playerHealth = other.gameObject.GetComponent<Health>();
-            TryAttack();
-        }
-    }
-
-    void OnTriggerStay(Collider other)
-    {
-        if (other.gameObject.CompareTag("Player"))
-        {
-            TryAttack();
-        }
-    }
-
-    private void TryAttack()
-    {
-        if (isOnCooldown) return;
         if (playerHealth == null || playerHealth.IsDead()) return;
+        if (playerController != null && playerController.IsInvincible()) return;
 
-        // 开始攻击冷却（无论是否被抵挡）
-        StartCoroutine(AttackCooldownCoroutine());
-
-        // 检查护盾
         PotionEffects potionEffects = playerHealth.GetComponent<PotionEffects>();
         if (potionEffects != null && potionEffects.CheckAndConsumeShield())
         {
-            // 伤害被护盾抵挡，不造成伤害
+            playerController?.EnterInvincibility();
             return;
         }
 
         playerHealth.TakeDamage(attackDamage);
-    }
-
-    private IEnumerator AttackCooldownCoroutine()
-    {
-        isOnCooldown = true;
-        yield return new WaitForSeconds(attackCooldown);
-        isOnCooldown = false;
     }
 }
