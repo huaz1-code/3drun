@@ -3,6 +3,7 @@ using UnityEngine;
 public class DebuffZoneTrigger : MonoBehaviour
 {
     private BossDebuffZone parentZone;
+    private bool isPlayerSlowed = false;
 
     public void Initialize(BossDebuffZone zone)
     {
@@ -16,7 +17,19 @@ public class DebuffZoneTrigger : MonoBehaviour
             PlayerController playerController = other.GetComponent<PlayerController>();
             if (playerController == null || !playerController.IsInvincible())
             {
-                parentZone?.OnPlayerEnterZone(other);
+                ApplySlow(other);
+            }
+        }
+    }
+
+    void OnTriggerStay(Collider other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            PlayerController playerController = other.GetComponent<PlayerController>();
+            if (playerController != null && !playerController.IsInvincible() && !isPlayerSlowed)
+            {
+                ApplySlow(other);
             }
         }
     }
@@ -25,7 +38,19 @@ public class DebuffZoneTrigger : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            parentZone?.OnPlayerExitZone(other);
+            RemoveSlow(other);
         }
+    }
+
+    private void ApplySlow(Collider player)
+    {
+        isPlayerSlowed = true;
+        parentZone?.OnPlayerEnterZone(player);
+    }
+
+    private void RemoveSlow(Collider player)
+    {
+        isPlayerSlowed = false;
+        parentZone?.OnPlayerExitZone(player);
     }
 }

@@ -368,7 +368,6 @@ public class PlayerController : MonoBehaviour
     /// <param name="factor">速度倍率（0-1）</param>
     public void SetSlowFactor(float factor)
     {
-        if (isInvincible) return;
         currentSpeedMultiplier = Mathf.Clamp(factor, 0f, 1f);
     }
 
@@ -410,5 +409,33 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(invincibilityDuration);
         isInvincible = false;
         Debug.Log("玩家无敌状态结束！");
+        
+        // 无敌结束后，检查是否还在减速场中
+        CheckDebuffZone();
+    }
+    
+    /// <summary>
+    /// 检查是否还在减速场中，如果是则重新应用减速效果
+    /// </summary>
+    private void CheckDebuffZone()
+    {
+        // 查找玩家周围的碰撞体
+        Collider[] colliders = Physics.OverlapSphere(transform.position, 0.5f);
+        foreach (Collider col in colliders)
+        {
+            // 查找DebuffZoneTrigger组件
+            DebuffZoneTrigger trigger = col.GetComponent<DebuffZoneTrigger>();
+            if (trigger != null)
+            {
+                // 调用减速场的玩家进入方法
+                BossDebuffZone zone = trigger.GetComponentInParent<BossDebuffZone>();
+                if (zone != null && zone.isActive)
+                {
+                    zone.OnPlayerEnterZone(GetComponent<Collider>());
+                    Debug.Log("无敌结束后重新应用减速场效果！");
+                    break;
+                }
+            }
+        }
     }
 }

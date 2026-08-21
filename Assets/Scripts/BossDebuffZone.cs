@@ -39,7 +39,7 @@ public class BossDebuffZone : MonoBehaviour
     private Health health;
     private LineRenderer lineRenderer;
     private GameObject zoneVisual;
-    private bool isActive = false;
+    public bool isActive = false;
 
     void Start()
     {

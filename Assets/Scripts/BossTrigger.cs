@@ -37,8 +37,6 @@ public class BossTrigger : MonoBehaviour
 
         DestroyRoad();
         DestroyNPCs();
-        RecyclePlatforms();
-        StopPlatformSpawning();
         ActivateBoss();
     }
 
@@ -80,37 +78,6 @@ public class BossTrigger : MonoBehaviour
         Debug.Log($"通过标签销毁了 {npcsByTag.Length} 个 NPC 对象");
     }
 
-    private void RecyclePlatforms()
-    {
-        if (PlatformPool.Instance != null)
-        {
-            int platformCount = 0;
-            foreach (Transform child in PlatformPool.Instance.transform)
-            {
-                if (child.gameObject.activeSelf)
-                {
-                    PlatformPool.Instance.ReturnPlatform(child.gameObject);
-                    platformCount++;
-                }
-            }
-            Debug.Log($"回收了 {platformCount} 个平台对象");
-        }
-        else
-        {
-            Debug.LogWarning("没有找到 PlatformPool 实例");
-        }
-    }
-
-    private void StopPlatformSpawning()
-    {
-        PlatformSpawner spawner = FindObjectOfType<PlatformSpawner>();
-        if (spawner != null)
-        {
-            spawner.enabled = false;
-            Debug.Log("停止了平台生成器");
-        }
-    }
-
     private void ActivateBoss()
     {
         if (bossObject == null)
@@ -131,7 +98,6 @@ public class BossTrigger : MonoBehaviour
                 Debug.LogWarning("Boss对象上没有Boss组件！");
             }
 
-            // 初始化并显示Boss血条
             if (bossHealthBarManager != null)
             {
                 bossHealthBarManager.SetBossObject(bossObject);
