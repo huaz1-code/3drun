@@ -71,12 +71,6 @@ public class PlayerJump : MonoBehaviour
     private bool isGrounded = false;
 
     /// <summary>
-    /// 是否已经销毁初始Plane
-    /// 用于确保Plane只被销毁一次
-    /// </summary>
-    private bool hasDestroyedPlane = false;
-
-    /// <summary>
     /// 初始化方法 - 游戏开始时调用一次
     /// 职责：获取刚体，关闭默认重力，检查配置
     /// </summary>
@@ -173,43 +167,9 @@ public class PlayerJump : MonoBehaviour
         // 检查是否检测到地面
         bool foundGround = hitColliders.Length > 0;
 
-        // 如果检测到地面，且还没有销毁初始Plane，检查是否跳到了生成的平台上
-        if (foundGround && !hasDestroyedPlane)
-        {
-            CheckAndDestroyInitialPlane(hitColliders);
-        }
-
         // 如果命中任何碰撞器，说明在地面上
         // Length > 0 表示有物体被检测到
         return foundGround;
-    }
-
-    /// <summary>
-    /// 检查并销毁初始Plane
-    /// 当玩家第一次跳到生成的平台（Platform_开头）上时，销毁Plane
-    /// </summary>
-    /// <param name="hitColliders">检测到的碰撞器数组</param>
-    void CheckAndDestroyInitialPlane(Collider[] hitColliders)
-    {
-        // 遍历所有检测到的碰撞器
-        foreach (var collider in hitColliders)
-        {
-            GameObject hitObject = collider.gameObject;
-
-            // 检查是否跳到了生成的平台上（名称以"Platform_"开头）
-            if (hitObject.name.StartsWith("Platform_"))
-            {
-                // 查找并销毁初始Plane对象
-                GameObject planeObj = GameObject.Find("Plane");
-                if (planeObj != null)
-                {
-                    Destroy(planeObj);
-                    hasDestroyedPlane = true;
-                    Debug.Log("PlayerJump: 玩家第一次跳到平台上，销毁初始Plane");
-                }
-                break; // 只需要销毁一次
-            }
-        }
     }
 
     /// <summary>
